@@ -129,6 +129,10 @@ export default function AppDetails() {
                 <dd>{app.platformDetails.architectures}</dd>
                 <dt>Requirements</dt>
                 <dd>{app.platformDetails.requirements}</dd>
+                <dt>Application ID</dt>
+                <dd>{app.android?.applicationId || '—'}</dd>
+                <dt>Delivered from</dt>
+                <dd>{app.android?.deliveredFrom || '—'}</dd>
               </dl>
             </div>
           </aside>
@@ -194,6 +198,8 @@ export default function AppDetails() {
                   <dd>{app.name}</dd>
                   <dt>Version</dt>
                   <dd>v{release.currentVersion}</dd>
+                  <dt>Version code</dt>
+                  <dd>{release.currentVersionCode ?? '—'}</dd>
                   <dt>Release date</dt>
                   <dd>{release.releaseDate}</dd>
                   <dt>Platform</dt>
@@ -206,6 +212,27 @@ export default function AppDetails() {
                   <dd>{release.releaseStatus.label}</dd>
                   <dt>Artifact</dt>
                   <dd>{release.releaseStatus.hasArtifact ? 'Hosted' : 'Not hosted'}</dd>
+                  <dt>APK file</dt>
+                  <dd>
+                    {release.downloadFileName ? (
+                      release.downloadFileName
+                    ) : (
+                      <span className="muted">
+                        Not uploaded
+                        {release.expectedFileName ? ` · expected ${release.expectedFileName}` : ''}
+                      </span>
+                    )}
+                  </dd>
+                  <dt>File size</dt>
+                  <dd>{release.downloadSizeLabel || 'Not recorded'}</dd>
+                  <dt>Download</dt>
+                  <dd>
+                    {release.isDownloadable ? (
+                      <span className="badge badge--success">Available</span>
+                    ) : (
+                      <span className="badge badge--warning">Not available yet</span>
+                    )}
+                  </dd>
                 </dl>
               ) : (
                 <p className="muted">
@@ -256,7 +283,7 @@ export default function AppDetails() {
                   <IconPackage size={19} />
                   Build artifacts
                 </h2>
-                <span className="badge">Model only</span>
+                <span className="badge">GitHub Releases</span>
               </div>
               <ArtifactPanel app={app} />
             </section>
@@ -281,8 +308,12 @@ export default function AppDetails() {
                 <dd>{app.platform}</dd>
                 <dt>Current version</dt>
                 <dd>{release.isReleased ? `v${release.currentVersion}` : 'Not released'}</dd>
+                <dt>Version code</dt>
+                <dd>{release.currentVersionCode ?? '—'}</dd>
                 <dt>Releases recorded</dt>
                 <dd>{release.releaseCount}</dd>
+                <dt>APK available</dt>
+                <dd>{release.isDownloadable ? 'Yes' : 'No'}</dd>
                 <dt>Update channel</dt>
                 <dd>{app.update.channel}</dd>
                 <dt>Automatic updates</dt>
@@ -295,8 +326,9 @@ export default function AppDetails() {
             <div className="info-note">
               <IconInfo size={18} />
               <span>
-                No APK file is hosted for {app.name}. The download button stays disabled until a real
-                file is uploaded — it never points to a made-up link.
+                No APK file is hosted for {app.name} yet. Releases are delivered from GitHub
+                Releases, and the download button stays disabled until a real signed file is
+                published and its URL is configured — it never points to a made-up link.
               </span>
             </div>
 

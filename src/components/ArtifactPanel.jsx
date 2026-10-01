@@ -1,5 +1,5 @@
 import { ARTIFACT_TYPES, ARTIFACT_TYPE_LABELS } from '../data/releases'
-import { getReleasesForApp } from '../services/releaseService'
+import { getArtifactAvailability, getReleasesForApp } from '../services/releaseService'
 import { IconLock, IconPackage } from './icons'
 
 /**
@@ -7,26 +7,29 @@ import { IconLock, IconPackage } from './icons'
  *
  * Shows which artifact formats the hub is designed to carry, and the real
  * state of each one for this app. No file is ever invented: a format is only
- * marked "Available" when a release actually has an artifactUrl.
+ * marked "Available" when that release actually passes every download check.
  */
 export default function ArtifactPanel({ app }) {
   const releases = getReleasesForApp(app.id)
   const current = releases.find((release) => release.status === 'current') || releases[0] || null
+  const availability = getArtifactAvailability(current)
 
   const formats = Object.values(ARTIFACT_TYPES)
 
   function stateFor(type) {
     const match = releases.find((release) => release.artifactType === type)
 
-    if (match && match.artifactUrl) {
-      return { tone: 'success', label: 'Available', file: match.artifactName }
+    if (!match) {
+      return { tone: 'default', label: 'Not built', file: null }
     }
 
-    if (match) {
-      return { tone: 'warning', label: 'Not hosted', file: null }
+    const artifact = getArtifactAvailability(match)
+
+    if (artifact.downloadable) {
+      return { tone: 'success', label: 'Available', file: artifact.fileName }
     }
 
-    return { tone: 'default', label: 'Not built', file: null }
+    return { tone: 'warning', label: 'Not hosted', file: null }
   }
 
   return (
@@ -55,10 +58,16 @@ export default function ArtifactPanel({ app }) {
           <dl className="spec-table" style={{ marginTop: 12 }}>
             <dt>Version</dt>
             <dd>v{current.version}</dd>
+            <dt>Version code</dt>
+            <dd>{current.versionCode ?? '—'}</dd>
             <dt>Expected format</dt>
             <dd>{ARTIFACT_TYPE_LABELS[current.artifactType] || 'Not set'}</dd>
-            <dt>File name</dt>
-            <dd>{current.artifactName || 'No file uploaded'}</dd>
+            <dt>Expected file name</dt>
+            <dd>{availability.expectedFileName || 'Not determined'}</dd>
+            <dt>Uploaded file</dt>
+            <dd>{availability.fileName || 'No file uploaded'}</dd>
+            <dt>File size</dt>
+            <dd>{availability.sizeLabel || 'Not recorded'}</dd>
             <dt>Checksum</dt>
             <dd>{current.checksum || 'Not available'}</dd>
             <dt>Build ID</dt>
@@ -74,8 +83,9 @@ export default function ArtifactPanel({ app }) {
       <div className="info-note">
         <IconLock size={18} />
         <span>
-          No build file has been uploaded or generated. These fields exist so a real APK, AAB or
-          desktop build can be attached later without changing the data model.
+          APKs are delivered from GitHub Releases, never stored in this repository. A format is
+          marked &ldquo;Available&rdquo; only once a real file has been published and its URL is
+          configured in <code>src/data/distribution.js</code>.
         </span>
       </div>
     </div>

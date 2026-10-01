@@ -1,9 +1,11 @@
 import { APP_STATUS, getAllApps, getAppById } from '../data/apps'
 import {
   ARTIFACT_TYPE_LABELS,
+  ARTIFACT_TYPES,
   RELEASE_STATUS,
   getAllReleaseRecords,
 } from '../data/releases'
+import { getAssetLocation, getReleaseAssetUrl } from '../data/distribution'
 
 /**
  * Release service.
@@ -158,18 +160,106 @@ export function getReleaseStatus(release) {
   }
 }
 
+/**
+ * Release artifact availability.
+ *
+ * This is the guard that keeps the site honest. A release is only downloadable
+ * when a real file exists behind a real URL, so the UI can never render a link
+ * to something that was never published.
+ *
+ *   downloadable  true only when every blocking check passes
+ *   url           the real download URL, or null
+ *   fileName      the uploaded file name, or null
+ *   issues        why it is not downloadable (empty when it is)
+ *   warnings      incomplete metadata that does not block the download
+ */
+export function getArtifactAvailability(release) {
+  const issues = []
+  const warnings = []
+
+  if (!release) {
+    return {
+      downloadable: false,
+      url: null,
+      fileName: null,
+      fileSize: null,
+      sizeLabel: null,
+      expectedFileName: null,
+      issues: ['no-release'],
+      warnings: [],
+    }
+  }
+
+  const status = getReleaseStatus(release)
+  const location = getAssetLocation(release.appId, release.version)
+  const url = getReleaseAssetUrl(release.appId, release.version, release.artifactUrl)
+  const fileName = release.artifactName || location?.asset || null
+
+  if (!status.isPublished) issues.push('not-published')
+  if (!release.artifactType) issues.push('no-artifact-type')
+  if (!fileName) issues.push('missing-file-name')
+  if (!url) issues.push('missing-download-url')
+
+  if (release.artifactSizeMb === null || release.artifactSizeMb === undefined) {
+    warnings.push('unknown-size')
+  }
+
+  return {
+    downloadable: issues.length === 0,
+    url,
+    fileName,
+    fileSize: release.artifactSizeMb ?? null,
+    sizeLabel: formatFileSize(release.artifactSizeMb),
+    expectedFileName: getExpectedApkFileName(getAppById(release.appId)?.name, release.version, release.artifactType),
+    issues,
+    warnings,
+  }
+}
+
+/** True only when a real, published, downloadable file exists. */
+export function isReleaseDownloadable(release) {
+  return getArtifactAvailability(release).downloadable
+}
+
+/**
+ * The conventional file name for a release asset, e.g. 'ORINZA-v1.0.0.apk'.
+ *
+ * This is the hub's naming convention, not a claim that the file exists. It is
+ * used to show what the uploaded asset is expected to be called once a release
+ * is published; `getArtifactAvailability().downloadable` stays false until a
+ * real URL is configured.
+ */
+export function getExpectedApkFileName(appName, version, artifactType) {
+  if (!appName || !version) return null
+
+  const extension = artifactType === ARTIFACT_TYPES.AAB ? 'aab' : 'apk'
+
+  return `${String(appName).trim().replace(/\s+/g, '')}-v${version}.${extension}`
+}
+
+/** Human-readable size, or null when the size was never recorded. */
+export function formatFileSize(sizeMb) {
+  if (sizeMb === null || sizeMb === undefined || Number.isNaN(Number(sizeMb))) return null
+
+  const value = Number(sizeMb)
+
+  return value >= 1024 ? `${(value / 1024).toFixed(2)} GB` : `${value} MB`
+}
+
 /** Release info for the app's own page: current version, date and notes. */
 export function getAppReleaseMeta(appId) {
   const app = getAppById(appId)
   const current = getCurrentRelease(appId)
   const latest = getLatestRelease(appId)
   const prepared = getPreparedRelease(appId)
+  const artifact = getArtifactAvailability(current)
 
   return {
     appId,
     appName: app?.name || '',
     isReleased: current !== null,
     currentVersion: current?.version || null,
+    currentVersionCode: current?.versionCode ?? null,
     currentRelease: current,
     latestVersion: latest?.version || null,
     latestRelease: latest,
@@ -178,10 +268,17 @@ export function getAppReleaseMeta(appId) {
     lastUpdated: latest?.releaseDate || null,
     whatsNew: current?.changes || [],
     releaseNotes: current?.releaseNotes || null,
+    channel: current?.channel || null,
     minimumSupportedVersion: current?.minimumSupportedVersion || app?.platformDetails?.minimum || null,
     releaseStatus: getReleaseStatus(current),
     releaseCount: getReleasesForApp(appId).length,
     hasUpdate: prepared !== null,
+    artifact,
+    isDownloadable: artifact.downloadable,
+    downloadUrl: artifact.url,
+    downloadFileName: artifact.fileName,
+    expectedFileName: artifact.expectedFileName,
+    downloadSizeLabel: artifact.sizeLabel,
   }
 }
 
@@ -215,13 +312,16 @@ export function getUpdateAvailability(appId, installedVersion) {
       updateReady: false,
       installedVersion: target || null,
       latestVersion: null,
+      latestVersionCode: null,
       updateUrl: null,
+      updateFileName: null,
       releaseNotes: [],
       reason: 'no-release',
     }
   }
 
   const latest = meta.latestRelease
+  const latestArtifact = getArtifactAvailability(latest)
   const updateAvailable = compareVersions(latest.version, target) > 0
   const prepared = meta.preparedRelease
 
@@ -229,12 +329,17 @@ export function getUpdateAvailability(appId, installedVersion) {
     return {
       appId,
       updateAvailable: true,
-      updateReady: Boolean(latest.artifactUrl),
+      // Only a release that passes every validation check counts as ready.
+      updateReady: latestArtifact.downloadable,
       installedVersion: target,
       latestVersion: latest.version,
-      updateUrl: latest.artifactUrl,
+      latestVersionCode: latest.versionCode ?? null,
+      updateUrl: latestArtifact.downloadable ? latestArtifact.url : null,
+      updateFileName: latestArtifact.fileName,
       releaseNotes: latest.changes,
-      reason: 'published-release-available',
+      reason: latestArtifact.downloadable
+        ? 'published-release-available'
+        : `published-release-pending-artifact:${latestArtifact.issues.join(',')}`,
     }
   }
 
@@ -246,7 +351,9 @@ export function getUpdateAvailability(appId, installedVersion) {
       prepared: true,
       installedVersion: target,
       latestVersion: meta.currentVersion,
+      latestVersionCode: meta.currentVersionCode ?? null,
       updateUrl: null,
+      updateFileName: null,
       releaseNotes: prepared.changes,
       reason: 'prepared-not-published',
     }
@@ -258,7 +365,9 @@ export function getUpdateAvailability(appId, installedVersion) {
     updateReady: false,
     installedVersion: target,
     latestVersion: meta.currentVersion,
+    latestVersionCode: meta.currentVersionCode ?? null,
     updateUrl: null,
+    updateFileName: null,
     releaseNotes: meta.whatsNew,
     reason: 'up-to-date',
   }

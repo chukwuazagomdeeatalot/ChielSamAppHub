@@ -19,9 +19,15 @@ export default function DownloadButton({ app, update, size = 'lg', block = true 
   const currentVersion = release.currentVersion
   const latestVersion = update?.latestVersion || currentVersion
   const hasUpdate = Boolean(update?.updateAvailable)
-  const pendingUpdateAvailable = hasUpdate && Boolean(update?.updateUrl)
-  const downloadAvailable =
-    app.download.state === DOWNLOAD_STATES.AVAILABLE && Boolean(app.download.url)
+
+  // Validation in the release service is the single authority on whether a file
+  // can be downloaded. A url is only ever used when it passed every check, so
+  // the button cannot point at something that was never published.
+  const updateUrl = update?.updateReady ? update.updateUrl || null : null
+  const pendingUpdateAvailable = hasUpdate && Boolean(updateUrl)
+
+  const releaseUrl = release.isDownloadable ? release.downloadUrl || null : null
+  const releaseDownloadable = release.isDownloadable && Boolean(releaseUrl)
 
   let state = app.download.state
   if (hasUpdate) {
@@ -33,9 +39,11 @@ export default function DownloadButton({ app, update, size = 'lg', block = true 
   const configs = {
     [DOWNLOAD_STATES.AVAILABLE]: {
       label: `Download ${currentVersion ? `v${currentVersion}` : ''}`.trim(),
-      hint: app.download.note,
-      href: app.download.url,
-      disabled: !downloadAvailable,
+      hint: releaseDownloadable
+        ? `${release.downloadFileName}${release.downloadSizeLabel ? ` · ${release.downloadSizeLabel}` : ''}`
+        : app.download.note,
+      href: releaseUrl,
+      disabled: !releaseDownloadable,
       icon: IconDownload,
     },
     [DOWNLOAD_STATES.COMING_SOON]: {
@@ -48,7 +56,7 @@ export default function DownloadButton({ app, update, size = 'lg', block = true 
     [DOWNLOAD_STATES.UPDATE_AVAILABLE]: {
       label: `Update to v${latestVersion}`,
       hint: 'The update is ready to download.',
-      href: update?.updateUrl || null,
+      href: updateUrl,
       disabled: !pendingUpdateAvailable,
       icon: IconRefresh,
     },
@@ -66,6 +74,7 @@ export default function DownloadButton({ app, update, size = 'lg', block = true 
   const config = configs[state]
   const ButtonIcon = config.icon
   const className = `btn btn--primary${size === 'lg' ? ' btn--lg' : ''}${block ? ' btn--block' : ''}`
+  const fileName = state === DOWNLOAD_STATES.UPDATE_AVAILABLE ? update?.updateFileName : release.downloadFileName
 
   const content = (
     <>
@@ -77,7 +86,7 @@ export default function DownloadButton({ app, update, size = 'lg', block = true 
   return (
     <div className="download-state">
       {config.href ? (
-        <a className={className} href={config.href} download={app.download.fileName || undefined}>
+        <a className={className} href={config.href} download={fileName || undefined}>
           {content}
         </a>
       ) : (

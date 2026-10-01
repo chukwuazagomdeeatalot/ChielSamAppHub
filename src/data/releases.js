@@ -11,6 +11,15 @@
  *     the difference and never fabricates a link.
  *  3. Exactly one release per app may have status CURRENT. That is the version
  *     the hub presents as the app's current version.
+ *  4. `versionCode` is the Android version code, which must increase for every
+ *     upload the Play Store / Android installer will accept as an update.
+ *
+ * A release can hold several real versions (v1.0.0, v1.1.0, v2.0.0, ...). Each
+ * one is an independent record; the newest published record is the current
+ * release and every older record stays visible in the app's release history.
+ *
+ * Where the APK binary actually lives is configured separately, in
+ * `src/data/distribution.js`.
  */
 
 export const RELEASE_STATUS = {
@@ -52,6 +61,7 @@ export const RELEASES = [
   {
     appId: 'app_orinza',
     version: '1.0.0',
+    versionCode: 1,
     releaseDate: '2026-09-28',
     releaseNotes: 'First public release of ORINZA.',
     changes: [
@@ -69,6 +79,7 @@ export const RELEASES = [
     artifactSizeMb: null,
     checksum: null,
     buildId: null,
+    updateUrl: null,
   },
 ]
 

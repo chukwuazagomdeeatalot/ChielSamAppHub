@@ -57,6 +57,12 @@ export const APPS = [
       requirements: 'Internet not required for core features',
     },
 
+    /** Permanent Android identity of the installed app. */
+    android: {
+      applicationId: 'com.chielsam.orinza',
+      deliveredFrom: 'GitHub Releases',
+    },
+
     shortDescription:
       'A fresh entertainment experience built for quick, distraction-free fun on your phone.',
     description:
@@ -81,7 +87,7 @@ export const APPS = [
       url: null,
       fileName: null,
       sizeMb: null,
-      note: 'No APK is hosted yet. The download link will appear here once hosting is connected.',
+      note: 'No APK is hosted yet. The download link appears here once a signed APK is published as a GitHub Release.',
     },
 
     update: {
