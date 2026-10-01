@@ -1,20 +1,23 @@
 import { Link, useParams } from 'react-router-dom'
-import AppIcon from '../components/AppIcon'
 import AppCard from '../components/AppCard'
+import AppIcon from '../components/AppIcon'
+import ArtifactPanel from '../components/ArtifactPanel'
 import Badge from '../components/Badge'
 import DownloadButton from '../components/DownloadButton'
 import FeatureList from '../components/FeatureList'
 import ScreenshotPlaceholder from '../components/ScreenshotPlaceholder'
+import UpdateFlowPreview from '../components/UpdateFlowPreview'
 import UpdateStatus from '../components/UpdateStatus'
 import VersionHistory, { ReleaseNotes } from '../components/VersionHistory'
 import useUpdateStatus from '../hooks/useUpdateStatus'
-import { getAppBySlug, getAllApps, getDisplayVersion, getStatusTone, isReleased } from '../data/apps'
+import { getAppBySlug, getAllApps, getStatusTone } from '../data/apps'
+import { getAppReleaseMeta } from '../services/releaseService'
 import {
   IconArrowRight,
   IconChevronRight,
   IconImage,
   IconInfo,
-  IconLayers,
+  IconPackage,
   IconRefresh,
   IconSmartphone,
   IconSparkle,
@@ -45,7 +48,7 @@ export default function AppDetails() {
   }
 
   const { data: update } = useUpdateStatus(app)
-  const released = isReleased(app)
+  const release = getAppReleaseMeta(app.id)
   const others = getAllApps().filter((item) => item.id !== app.id)
 
   return (
@@ -71,10 +74,12 @@ export default function AppDetails() {
               </div>
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <Badge tone={getStatusTone(app.status)} pulse={released}>
+                <Badge tone={getStatusTone(app.status)} pulse={release.isReleased}>
                   {app.status}
                 </Badge>
-                <span className="badge badge--brand">{getDisplayVersion(app)}</span>
+                <span className="badge badge--brand">
+                  {release.isReleased ? `v${release.currentVersion}` : 'Not released'}
+                </span>
               </div>
 
               <p className="muted" style={{ fontSize: '0.95rem' }}>
@@ -83,21 +88,23 @@ export default function AppDetails() {
 
               <div className="details__meta-grid">
                 <div>
-                  <span className="stat-chip__label">Category</span>
-                  <strong style={{ display: 'block' }}>{app.category}</strong>
+                  <span className="stat-chip__label">Current version</span>
+                  <strong style={{ display: 'block' }}>
+                    {release.isReleased ? `v${release.currentVersion}` : '—'}
+                  </strong>
+                </div>
+                <div>
+                  <span className="stat-chip__label">Release date</span>
+                  <strong style={{ display: 'block' }}>{release.releaseDate || '—'}</strong>
                 </div>
                 <div>
                   <span className="stat-chip__label">Platform</span>
                   <strong style={{ display: 'block' }}>{app.platform}</strong>
                 </div>
                 <div>
-                  <span className="stat-chip__label">Version</span>
-                  <strong style={{ display: 'block' }}>{getDisplayVersion(app)}</strong>
-                </div>
-                <div>
-                  <span className="stat-chip__label">Size</span>
+                  <span className="stat-chip__label">File size</span>
                   <strong style={{ display: 'block' }}>
-                    {app.download.sizeMb ? `${app.download.sizeMb} MB` : 'Pending'}
+                    {app.download.sizeMb ? `${app.download.sizeMb} MB` : 'Not hosted'}
                   </strong>
                 </div>
               </div>
@@ -134,7 +141,7 @@ export default function AppDetails() {
                   About this app
                 </h2>
                 <span className="muted" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-                  {released ? `Updated ${app.updatedAt}` : 'Not yet released'}
+                  {release.isReleased ? `Released ${release.releaseDate}` : 'Not yet released'}
                 </span>
               </div>
               <p className="soft" style={{ lineHeight: 1.75 }}>
@@ -171,23 +178,56 @@ export default function AppDetails() {
             <section className="panel">
               <div className="panel__head">
                 <h2 className="panel__title">
-                  <IconLayers size={19} />
-                  Version history
+                  <IconPackage size={19} />
+                  Current release
                 </h2>
-                <span className="badge badge--brand">{getDisplayVersion(app)}</span>
+                {release.isReleased ? (
+                  <span className="badge badge--success">v{release.currentVersion}</span>
+                ) : (
+                  <span className="badge">No release</span>
+                )}
               </div>
-              <VersionHistory app={app} />
+
+              {release.currentRelease ? (
+                <dl className="spec-table">
+                  <dt>App</dt>
+                  <dd>{app.name}</dd>
+                  <dt>Version</dt>
+                  <dd>v{release.currentVersion}</dd>
+                  <dt>Release date</dt>
+                  <dd>{release.releaseDate}</dd>
+                  <dt>Platform</dt>
+                  <dd>{release.currentRelease.platform}</dd>
+                  <dt>Minimum supported</dt>
+                  <dd>{release.minimumSupportedVersion}</dd>
+                  <dt>Channel</dt>
+                  <dd>{release.currentRelease.channel}</dd>
+                  <dt>Release status</dt>
+                  <dd>{release.releaseStatus.label}</dd>
+                  <dt>Artifact</dt>
+                  <dd>{release.releaseStatus.hasArtifact ? 'Hosted' : 'Not hosted'}</dd>
+                </dl>
+              ) : (
+                <p className="muted">
+                  {app.name} has not been released yet, so there is no current release to show.
+                </p>
+              )}
+
+              <h3 style={{ fontSize: '0.95rem', marginTop: 'var(--space-2)' }}>What's New</h3>
+              <ReleaseNotes notes={release.whatsNew} />
             </section>
 
             <section className="panel">
               <div className="panel__head">
                 <h2 className="panel__title">
-                  <IconSparkle size={19} />
-                  What's New
+                  <IconRefresh size={19} />
+                  Version history
                 </h2>
-                <span className="badge badge--brand">{getDisplayVersion(app)}</span>
+                <span className="badge badge--brand">
+                  {release.releaseCount} release{release.releaseCount === 1 ? '' : 's'}
+                </span>
               </div>
-              <ReleaseNotes notes={app.whatsNew} />
+              <VersionHistory app={app} />
             </section>
 
             <section className="panel">
@@ -202,10 +242,23 @@ export default function AppDetails() {
               <UpdateStatus app={app} />
 
               <p className="muted" style={{ fontSize: '0.88rem' }}>
-                Update results are read from the hub&apos;s local app data. A real update endpoint
-                will be connected in a later phase - the interface already reads from the update
-                service, so nothing here needs rewriting when that happens.
+                Update results are read from the release records stored in this project. No Android
+                update is downloaded or installed automatically — an update means a visitor fetches
+                a newer build from this page.
               </p>
+
+              <UpdateFlowPreview currentVersion={release.currentVersion || '1.0.0'} />
+            </section>
+
+            <section className="panel">
+              <div className="panel__head">
+                <h2 className="panel__title">
+                  <IconPackage size={19} />
+                  Build artifacts
+                </h2>
+                <span className="badge">Model only</span>
+              </div>
+              <ArtifactPanel app={app} />
             </section>
 
             <section className="panel">
@@ -227,9 +280,9 @@ export default function AppDetails() {
                 <dt>Platform</dt>
                 <dd>{app.platform}</dd>
                 <dt>Current version</dt>
-                <dd>{getDisplayVersion(app)}</dd>
-                <dt>First released</dt>
-                <dd>{app.releasedAt || 'Not released'}</dd>
+                <dd>{release.isReleased ? `v${release.currentVersion}` : 'Not released'}</dd>
+                <dt>Releases recorded</dt>
+                <dd>{release.releaseCount}</dd>
                 <dt>Update channel</dt>
                 <dd>{app.update.channel}</dd>
                 <dt>Automatic updates</dt>
@@ -242,8 +295,8 @@ export default function AppDetails() {
             <div className="info-note">
               <IconInfo size={18} />
               <span>
-                No APK file is hosted for {app.name} yet. The download button stays disabled until a
-                real file is connected - it never points to a made-up link.
+                No APK file is hosted for {app.name}. The download button stays disabled until a real
+                file is uploaded — it never points to a made-up link.
               </span>
             </div>
 

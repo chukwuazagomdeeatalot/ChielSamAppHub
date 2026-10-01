@@ -1,4 +1,8 @@
+import { getAppReleaseMeta } from '../services/releaseService'
+
 export default function DeviceMock({ app }) {
+  const release = getAppReleaseMeta(app.id)
+
   return (
     <div className="device" aria-hidden="true">
       <div className="device__screen">
@@ -33,7 +37,9 @@ export default function DeviceMock({ app }) {
         <div className="device__row" />
 
         <div className="device__cta">
-          <span className="device__pill">Download v{app.version}</span>
+          <span className="device__pill">
+            {release.isReleased ? `Download v${release.currentVersion}` : 'Download coming soon'}
+          </span>
           <span className="device__pill device__pill--ghost">No new update available</span>
         </div>
       </div>

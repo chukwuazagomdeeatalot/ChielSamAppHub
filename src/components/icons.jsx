@@ -243,6 +243,14 @@ export const IconImage = make(
   </>,
 )
 
+export const IconPackage = make(
+  <>
+    <path d="M20.5 8.5v7l-8.5 4.7-8.5-4.7v-7L12 3.8z" />
+    <path d="m3.5 8.5 8.5 4.7 8.5-4.7" />
+    <path d="M12 13.2V20" />
+  </>,
+)
+
 export const SCREEN_GLYPHS = {
   home: IconHome,
   compass: IconCompass,

@@ -1,151 +1,91 @@
-import { getAppBySlug, getPendingUpdate } from '../data/apps'
+import { getAppBySlug } from '../data/apps'
+import {
+  compareVersions,
+  getAppReleaseMeta,
+  getUpdateAvailability,
+  isRemoteReleaseSource,
+} from './releaseService'
 
 /**
  * Update service.
  *
- * Phase 4 still runs on local data - there is no backend. The public API is
- * kept stable so a real service can replace it later without changing any
- * component:
+ * A thin layer over the release service: it answers "does this visitor have
+ * the newest version?" and always returns the same shape.
  *
- *   getUpdateStatus(appSlug, installedVersion) -> Promise<UpdateResult>
- *   getAppUpdate(app, installedVersion)        -> UpdateResult
- *
- * UpdateResult always contains:
+ * UpdateResult contains:
  *   currentVersion, latestVersion, updateAvailable, releaseNotes, updateUrl
+ * plus source/isMock so the interface can label local data honestly.
  *
- * `source` tells the UI where the answer came from, so the interface can label
- * mocked data honestly: "local" today, "remote" once a real endpoint is added.
- *
- * To go live later: set UPDATE_BACKEND.mode = "remote" and fill in
- * UPDATE_BACKEND.endpoint. The endpoint only has to return the same fields.
+ * This service does NOT perform Android updates and does not download
+ * anything. Automatic in-app updates are not implemented - all it does is
+ * describe releases that have been recorded as data.
  */
-
-export const UPDATE_BACKEND = {
-  mode: 'local',
-  endpoint: null,
-}
 
 export const UPDATE_STATES = {
   UP_TO_DATE: 'up-to-date',
   UPDATE_AVAILABLE: 'update-available',
+  UPDATE_PREPARED: 'update-prepared',
   UNKNOWN: 'unknown',
   ERROR: 'error',
 }
 
-function toVersionParts(version) {
-  return String(version)
-    .replace(/^v/i, '')
-    .split('.')
-    .map((part) => Number.parseInt(part, 10) || 0)
-}
+export { compareVersions }
 
-export function compareVersions(a, b) {
-  const left = toVersionParts(a)
-  const right = toVersionParts(b)
-  const length = Math.max(left.length, right.length)
-
-  for (let index = 0; index < length; index += 1) {
-    const difference = (left[index] || 0) - (right[index] || 0)
-    if (difference !== 0) return difference > 0 ? 1 : -1
-  }
-
-  return 0
-}
-
-export function isRemoteSource() {
-  return UPDATE_BACKEND.mode === 'remote' && Boolean(UPDATE_BACKEND.endpoint)
-}
-
-/**
- * Builds the update result for one app. Works with local data today and is the
- * single place that decides whether an update exists.
- */
+/** Synchronous update check, derived from the release records. */
 export function getAppUpdate(app, installedVersion) {
-  if (!app || !app.version) {
-    return {
-      state: UPDATE_STATES.UNKNOWN,
-      appSlug: app?.slug || '',
-      appId: app?.id || '',
-      appName: app?.name || '',
-      currentVersion: null,
-      installedVersion: installedVersion || null,
-      latestVersion: null,
-      updateAvailable: false,
-      releaseNotes: [],
-      updateUrl: null,
-      publishedAt: null,
-      source: isRemoteSource() ? 'remote' : 'local',
-      isMock: !isRemoteSource(),
-    }
+  if (!app || !app.slug) {
+    return unknownResult(app?.slug || '')
   }
 
-  const pending = getPendingUpdate(app)
-  const installed = installedVersion || app.version
-  const latestVersion = pending?.latestVersion || app.version
-  const updateAvailable = compareVersions(latestVersion, installed) > 0
+  const availability = getUpdateAvailability(app.id, installedVersion)
+  const meta = getAppReleaseMeta(app.id)
+
+  let state = UPDATE_STATES.UP_TO_DATE
+  if (availability.updateAvailable) {
+    state = UPDATE_STATES.UPDATE_AVAILABLE
+  } else if (availability.prepared) {
+    state = UPDATE_STATES.UPDATE_PREPARED
+  }
 
   return {
-    state: updateAvailable ? UPDATE_STATES.UPDATE_AVAILABLE : UPDATE_STATES.UP_TO_DATE,
+    state,
     appSlug: app.slug,
     appId: app.id,
     appName: app.name,
-    currentVersion: app.version,
-    installedVersion: installed,
-    latestVersion,
-    updateAvailable,
-    releaseNotes: pending?.releaseNotes || app.whatsNew,
-    updateUrl: pending?.updateUrl || null,
-    publishedAt: app.updatedAt,
-    source: isRemoteSource() ? 'remote' : 'local',
-    isMock: !isRemoteSource(),
+    currentVersion: availability.installedVersion,
+    installedVersion: availability.installedVersion,
+    latestVersion: availability.latestVersion,
+    updateAvailable: availability.updateAvailable,
+    updateReady: availability.updateReady,
+    releaseNotes: availability.releaseNotes,
+    updateUrl: availability.updateUrl,
+    publishedAt: meta.lastUpdated,
+    source: isRemoteReleaseSource() ? 'remote' : 'local',
+    isMock: !isRemoteReleaseSource(),
   }
 }
 
-async function fetchRemoteUpdate(app, installedVersion) {
-  const response = await fetch(
-    `${UPDATE_BACKEND.endpoint}?app=${app.slug}&installed=${installedVersion || app.version}`,
-    { headers: { Accept: 'application/json' } },
-  )
-
-  if (!response.ok) {
-    throw new Error(`Update check failed with status ${response.status}`)
-  }
-
-  const payload = await response.json()
-
+function unknownResult(slug) {
   return {
-    ...getAppUpdate(app, installedVersion),
-    ...payload,
-    state: payload.updateAvailable ? UPDATE_STATES.UPDATE_AVAILABLE : UPDATE_STATES.UP_TO_DATE,
-    source: 'remote',
-    isMock: false,
+    state: UPDATE_STATES.UNKNOWN,
+    appSlug: slug,
+    appId: '',
+    appName: '',
+    currentVersion: null,
+    installedVersion: null,
+    latestVersion: null,
+    updateAvailable: false,
+    updateReady: false,
+    releaseNotes: [],
+    updateUrl: null,
+    publishedAt: null,
+    source: 'local',
+    isMock: true,
   }
 }
 
+/** Async wrapper kept for compatibility with the existing hook. */
 export async function getUpdateStatus(appSlug, installedVersion) {
   const app = getAppBySlug(appSlug)
-
-  if (!app) {
-    return {
-      state: UPDATE_STATES.UNKNOWN,
-      appSlug,
-      appId: '',
-      appName: '',
-      currentVersion: null,
-      installedVersion: installedVersion || null,
-      latestVersion: null,
-      updateAvailable: false,
-      releaseNotes: [],
-      updateUrl: null,
-      publishedAt: null,
-      source: isRemoteSource() ? 'remote' : 'local',
-      isMock: true,
-    }
-  }
-
-  if (isRemoteSource()) {
-    return fetchRemoteUpdate(app, installedVersion)
-  }
-
   return getAppUpdate(app, installedVersion)
 }

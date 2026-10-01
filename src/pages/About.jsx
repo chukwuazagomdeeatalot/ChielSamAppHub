@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 import Badge from '../components/Badge'
 import FeatureList from '../components/FeatureList'
-import { getAllApps, getHubStats } from '../data/apps'
+import { getAllApps } from '../data/apps'
+import { getHubStats } from '../services/releaseService'
 import {
   IconArrowRight,
   IconCode,

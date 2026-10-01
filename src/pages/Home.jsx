@@ -4,7 +4,8 @@ import Badge from '../components/Badge'
 import DeviceMock from '../components/DeviceMock'
 import SectionHead, { PlaceholderCard } from '../components/SectionHead'
 import { UpdateStatusCompact } from '../components/UpdateStatus'
-import { getAllReleases, getFeaturedApps, getHubStats } from '../data/apps'
+import { getFeaturedApps } from '../data/apps'
+import { getAllReleases, getAppReleaseMeta, getHubStats } from '../services/releaseService'
 import {
   IconArrowRight,
   IconCheckCircle,
@@ -120,8 +121,11 @@ function FeaturedApps() {
         />
 
         <div className="app-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
-          {featured.map((app) => (
-            <article className="featured" key={app.slug}>
+          {featured.map((app) => {
+            const release = getAppReleaseMeta(app.id)
+
+            return (
+              <article className="featured" key={app.slug}>
               <div className="featured__body">
                 <div className="featured__head">
                   <AppIcon app={app} size="md" />
@@ -140,7 +144,7 @@ function FeaturedApps() {
                 <div className="featured__stats">
                   <div className="stat-chip">
                     <span className="stat-chip__label">Version</span>
-                    <span className="stat-chip__value">{app.version}</span>
+                    <span className="stat-chip__value">{release.currentVersion}</span>
                   </div>
                   <div className="stat-chip">
                     <span className="stat-chip__label">Platform</span>
@@ -152,7 +156,7 @@ function FeaturedApps() {
                   </div>
                   <div className="stat-chip">
                     <span className="stat-chip__label">Released</span>
-                    <span className="stat-chip__value">{app.releasedAt}</span>
+                    <span className="stat-chip__value">{release.releaseDate}</span>
                   </div>
                 </div>
 
@@ -182,18 +186,23 @@ function FeaturedApps() {
                     style={{ padding: 16, width: '100%', maxWidth: 260, background: 'var(--surface)' }}
                   >
                     <span className="footer__title">Latest release</span>
-                    <strong style={{ display: 'block', marginTop: 6 }}>v{app.version}</strong>
+                    <strong style={{ display: 'block', marginTop: 6 }}>
+                      v{release.latestVersion}
+                    </strong>
                     <p className="muted" style={{ fontSize: '0.82rem' }}>
-                      {app.releasedAt} · {app.platform}
+                      {release.releaseDate} · {app.platform}
                     </p>
                     <span style={{ marginTop: 10 }}>
-                      <Badge tone="success">{app.status}</Badge>
+                      <Badge tone={release.releaseStatus.tone}>
+                        {release.releaseStatus.label}
+                      </Badge>
                     </span>
                   </div>
                 </div>
               </div>
             </article>
-          ))}
+            )
+          })}
 
           <PlaceholderCard
             title="Next featured app"
@@ -233,15 +242,17 @@ function LatestUpdates() {
                     <strong>{release.appName}</strong>
                   </Link>
                   <span className="badge badge--brand">v{release.version}</span>
-                  <span className="badge">{release.type}</span>
+                  <span className="badge">
+                    {release.isCurrent ? 'Current release' : 'Previous release'}
+                  </span>
                   <span className="timeline__date" style={{ marginLeft: 'auto' }}>
-                    {release.date}
+                    {release.releaseDate}
                   </span>
                 </div>
 
                 <ul className="timeline__notes">
-                  {release.notes.map((note) => (
-                    <li key={note}>{note}</li>
+                  {release.changes.map((change) => (
+                    <li key={change}>{change}</li>
                   ))}
                 </ul>
               </div>

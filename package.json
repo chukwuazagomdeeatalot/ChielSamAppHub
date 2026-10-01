@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vite build --ssr tests/smoke.jsx --outDir .test-out --logLevel error && node .test-out/smoke.js"
   },
   "dependencies": {
     "react": "^18.3.1",

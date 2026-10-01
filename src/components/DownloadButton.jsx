@@ -1,4 +1,5 @@
-import { DOWNLOAD_STATES, isReleased } from '../data/apps'
+import { DOWNLOAD_STATES } from '../data/apps'
+import { getAppReleaseMeta } from '../services/releaseService'
 import { IconClock, IconDownload, IconLock, IconRefresh } from './icons'
 
 /**
@@ -14,7 +15,9 @@ import { IconClock, IconDownload, IconLock, IconRefresh } from './icons'
  * point somewhere invented.
  */
 export default function DownloadButton({ app, update, size = 'lg', block = true }) {
-  const latestVersion = update?.latestVersion || null
+  const release = getAppReleaseMeta(app.id)
+  const currentVersion = release.currentVersion
+  const latestVersion = update?.latestVersion || currentVersion
   const hasUpdate = Boolean(update?.updateAvailable)
   const pendingUpdateAvailable = hasUpdate && Boolean(update?.updateUrl)
   const downloadAvailable =
@@ -29,7 +32,7 @@ export default function DownloadButton({ app, update, size = 'lg', block = true 
 
   const configs = {
     [DOWNLOAD_STATES.AVAILABLE]: {
-      label: `Download ${isReleased(app) ? `v${app.version}` : ''}`.trim(),
+      label: `Download ${currentVersion ? `v${currentVersion}` : ''}`.trim(),
       hint: app.download.note,
       href: app.download.url,
       disabled: !downloadAvailable,

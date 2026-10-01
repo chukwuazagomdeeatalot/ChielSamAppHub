@@ -1240,6 +1240,235 @@
   }
 }
 
+/* ---------- Phase 5A: release management ---------- */
+.version-entry__card--current {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.version-entry__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--text-muted);
+}
+
+.version-entry__notes {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+/* Release summary (dashboard) */
+.release-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.release-summary__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.release-summary__version {
+  font-size: 1.15rem;
+  margin-top: 4px;
+  letter-spacing: -0.02em;
+}
+
+.release-summary__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4) 0;
+  border-block: 1px dashed var(--border);
+}
+
+.release-summary__grid dt {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.release-summary__grid dd {
+  margin: 2px 0 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.release-summary__notes {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+.release-summary__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.release-summary__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.release-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  padding: var(--space-5);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.release-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.84rem;
+}
+
+/* Artifacts */
+.artifacts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.artifacts__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+
+.artifact {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.artifact__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  background: var(--surface-3);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.artifact__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.artifact__type {
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.artifacts__current {
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+/* Future update flow preview */
+.update-flow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 2px dashed var(--brand);
+  border-radius: var(--radius-md);
+  background: var(--brand-soft);
+}
+
+.update-flow__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  color: var(--brand);
+  font-size: 0.94rem;
+}
+
+.update-flow__demo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.update-flow__versions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.update-flow__versions > div:not(.update-flow__arrow) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.update-flow__versions strong {
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+
+.update-flow__arrow {
+  font-size: 1.3rem;
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.update-flow__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+@media (max-width: 560px) {
+  .update-flow__versions {
+    gap: var(--space-3);
+  }
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1024px) {
   .hero__inner {
