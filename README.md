@@ -115,21 +115,27 @@ git commit -m "message"     # save a version locally
 git log --oneline           # list saved versions
 ```
 
-## 6. Future GitHub / cloud deployment plan
+## 6. Automatic deployment with GitHub Actions
 
-The site is a static build, so it can be hosted for free. The intended order of steps:
+The site is deployed automatically to **GitHub Pages**. Pushing to `main` triggers a workflow that
+builds the site in the cloud and publishes it — **your laptop does not need to be running
+afterwards**.
 
-1. Create a **private** GitHub repository (owner decides the name and visibility).
-2. Connect it: `git remote add origin <url>` then `git push -u origin main`.
-3. Let **GitHub Actions** run `npm ci && npm run build` on every push (workflow not added yet —
-   it will be created once the remote exists).
-4. Publish the `dist/` folder, either to GitHub Pages or to a free static host such as
-   Cloudflare Pages or Vercel.
-5. Later phases, only after the site is live: owner authentication, real APK hosting, then
-   automatic update checks pointed at a real endpoint.
+- Workflow file: `.github/workflows/deploy.yml`
+- Triggers on every push to `main`, and can also be run manually from the Actions tab
+  ("Run workflow")
+- Steps: checkout → set up Node 20 → `npm ci` → `npm run build` → upload `dist/` → deploy
+- Vite is configured with `base: '/ChielSamAppHub/'` in `vite.config.js`, because Pages serves the
+  site from `https://<user>.github.io/ChielSamAppHub/`. If the repository is ever renamed, that one
+  value must change to match.
+- No secrets are stored in the workflow. GitHub provides a short-lived token automatically.
 
-**No remote is configured yet**, and nothing has been pushed anywhere. The remote must be added
-manually once the GitHub repository has been created.
+Live site: <https://chukwuazagomdeeatalot.github.io/ChielSamAppHub/>
+
+One-time manual setting required: in **Settings → Pages → Build and deployment → Source**, choose
+**GitHub Actions**. See the note below.
+
+To see the deployment history, open the repository's **Actions** tab.
 
 ## 7. Connecting a real backend later
 
@@ -148,6 +154,7 @@ component has to change.
 - No APK download links (the download button is a disabled placeholder)
 - No owner login / authentication
 - No file uploads or Firebase
-- No automatic in-app updates
+- No automatic in-app updates for the published apps
 
 All of these are shown as clearly marked placeholders so the layout is ready for them.
+Automatic *deployment* of the website itself is already working — see section 6.
