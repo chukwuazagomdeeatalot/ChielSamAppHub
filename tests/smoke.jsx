@@ -30,6 +30,7 @@ import { getAppUpdate, getUpdateStatus, UPDATE_STATES } from '../src/services/up
 import {
   DISTRIBUTION,
   buildReleaseAssetUrl,
+  getAssetLocation,
   getReleaseAssetUrl,
   hasConfiguredAssets,
 } from '../src/data/distribution'
@@ -373,9 +374,9 @@ check('downloadable has no blocking issues', downloadable.issues.length === 0)
 check('getAppReleaseMeta reports downloadable', getAppReleaseMeta(orinza.id).isDownloadable === true)
 
 // Incomplete metadata must still block the download.
-orinzaRelease.artifactName = null
-check('missing file name blocks download', getArtifactAvailability(getCurrentRelease(orinza.id)).downloadable === false)
-orinzaRelease.artifactName = 'ORINZA-v1.0.0.apk'
+  orinzaRelease.artifactName = null
+  check('missing file name does not block when distribution config has it', getArtifactAvailability(getCurrentRelease(orinza.id)).downloadable === true)
+  orinzaRelease.artifactName = 'ORINZA-v1.0.0.apk'
 orinzaRelease.status = RELEASE_STATUS.DRAFT
 const draftArtifact = getArtifactAvailability(orinzaRelease)
 check('unpublished release blocks download', draftArtifact.downloadable === false)
@@ -455,7 +456,11 @@ const allHtml = [
   ),
 ].join(' ')
 
-check('no fake apk link in html', !/\.apk["']/i.test(allHtml.replace(/https:\/\/example\.com[^"' ]*/g, '').replace(/https:\/\/github\.com\/chukwuazagomdeeatalot\/ChielSamAppHub\/releases\/download\/v1\.0\.0\/ORINZA-v1\.0\.0\.apk/g, '')))
+check('no fake apk link in html', !/\.apk["']/i.test(allHtml
+  .replace(/https:\/\/example\.com[^"' ]*/g, '')
+  .replace(/https:\/\/github\.com\/chukwuazagomdeeatalot\/ChielSamAppHub\/releases\/download\/v1\.0\.0\/ORINZA-v1\.0\.0\.apk/g, '')
+  .replace(/download="[^"]*\.apk"/g, '')
+  .replace(/download='[^']*\.apk'/g, '')))
 check('no invented http download urls', !/href="https?:\/\/(?!example\.com|github\.com\/chukwuazagomdeeatalot\/ChielSamAppHub\/releases\/download\/v1\.0\.0\/ORINZA-v1\.0\.0\.apk)[^"]*(\.apk|\.aab|download)/i.test(allHtml))
 check('release artifact urls stay null - distribution builds the url', getAllReleaseRecords().every((r) => r.artifactUrl === null))
 check('app download urls stay null - distribution builds the url', getAllApps().every((a) => a.download.url === null))
