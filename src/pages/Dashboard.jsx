@@ -1,8 +1,18 @@
 import { Link } from 'react-router-dom'
-import Badge from '../components/Badge'
+import AddAppPlaceholder from '../components/AddAppPlaceholder'
 import AppIcon from '../components/AppIcon'
+import Badge from '../components/Badge'
 import UpdateStatus from '../components/UpdateStatus'
-import { getAllApps, getAllReleases, getHubStats } from '../data/apps'
+import { ReleaseNotes } from '../components/VersionHistory'
+import {
+  getAllApps,
+  getAllReleases,
+  getAppsWithPendingUpdates,
+  getDisplayVersion,
+  getHubStats,
+  getStatusTone,
+  isReleased,
+} from '../data/apps'
 import {
   IconArrowRight,
   IconCheck,
@@ -11,7 +21,6 @@ import {
   IconLayers,
   IconLock,
   IconNotes,
-  IconPlus,
   IconRefresh,
   IconRocket,
   IconStore,
@@ -19,81 +28,94 @@ import {
   IconUpload,
 } from '../components/icons'
 
+const SECTIONS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'my-apps', label: 'My Apps' },
+  { id: 'releases', label: 'Releases' },
+  { id: 'updates', label: 'Updates' },
+]
+
 const MODULES = [
   {
-    icon: IconPlus,
-    title: 'Add App',
-    description: 'Register a new app on the hub with its name, category, icon and description.',
+    icon: IconTag,
+    title: 'App details',
+    description: 'Edit name, category, description, features and screenshots.',
+    ready: true,
+  },
+  {
+    icon: IconLayers,
+    title: 'Version history',
+    description: 'Track real releases and their notes for every app.',
+    ready: true,
+  },
+  {
+    icon: IconRefresh,
+    title: 'Update status',
+    description: 'Show visitors whether their installed version is current.',
+    ready: true,
   },
   {
     icon: IconGrid,
     title: 'Manage Apps',
-    description: 'Edit app details, change status, feature an app or remove it from the catalogue.',
+    description: 'Change status, feature an app or remove it from the catalogue.',
+    ready: false,
   },
   {
     icon: IconUpload,
     title: 'Upload Release',
-    description: 'Attach a new build file to an app and keep previous releases available.',
-  },
-  {
-    icon: IconTag,
-    title: 'Version Management',
-    description: 'Track version numbers, minimum requirements and platform targets per app.',
+    description: 'Attach a new build file to an app and keep previous releases.',
+    ready: false,
   },
   {
     icon: IconNotes,
     title: 'Release Notes',
-    description: 'Write the changelog for each release and publish it on the app page.',
+    description: 'Write the changelog for a release and publish it on the app page.',
+    ready: false,
   },
   {
     icon: IconRocket,
     title: 'Publish Update',
-    description: 'Mark a release as live so visitors see the new version immediately.',
-  },
-  {
-    icon: IconRefresh,
-    title: 'Update Status',
-    description: 'Show visitors whether their installed version is current or an update exists.',
+    description: 'Mark a release live so visitors see the new version immediately.',
+    ready: false,
   },
 ]
 
-const ROADMAP = [
-  {
-    phase: 'Phase 1 · Live now',
-    title: 'Foundation and public UI',
-    items: [
-      'Home, Apps, App Details, About and this dashboard preview',
-      'Responsive layout for desktop, tablet and phone',
-      'ORINZA published as the first sample app',
-    ],
-    tone: 'success',
-  },
-  {
-    phase: 'Phase 2 · Next',
-    title: 'Real app hosting',
-    items: [
-      'Owner sign-in so only ChielSam can publish',
-      'Real APK download links and file storage',
-      'Working Add App, Upload Release and Publish Update actions',
-    ],
-    tone: 'brand',
-  },
-  {
-    phase: 'Phase 3 · Later',
-    title: 'Automatic updates',
-    items: [
-      'In-app update checker connected to a live endpoint',
-      'Release channels such as stable and beta',
-      'Download statistics and install prompts',
-    ],
-    tone: 'warning',
-  },
-]
+function Stat({ icon: StatIcon, value, label, tone }) {
+  return (
+    <div className="dash-stat">
+      <span className="dash-stat__icon" style={tone ? { background: `var(--${tone}-soft)`, color: `var(--${tone})` } : undefined}>
+        <StatIcon size={20} />
+      </span>
+      <div>
+        <div className="dash-stat__value">{value}</div>
+        <div className="dash-stat__label">{label}</div>
+      </div>
+    </div>
+  )
+}
+
+function SectionHeading({ id, title, description, linkTo, linkLabel }) {
+  return (
+    <div className="section-head" id={id} style={{ marginBottom: 'var(--space-5)', scrollMarginTop: 100 }}>
+      <div className="section-head__text">
+        <h2 style={{ fontSize: '1.35rem' }}>{title}</h2>
+        <p className="lead">{description}</p>
+      </div>
+      {linkTo ? (
+        <Link to={linkTo} className="section-head__link">
+          {linkLabel}
+          <IconArrowRight size={16} />
+        </Link>
+      ) : null}
+    </div>
+  )
+}
 
 export default function Dashboard() {
   const apps = getAllApps()
   const releases = getAllReleases()
   const stats = getHubStats()
+  const appsWithUpdates = getAppsWithPendingUpdates()
 
   return (
     <div className="page">
@@ -104,126 +126,68 @@ export default function Dashboard() {
               <span className="eyebrow">Owner area</span>
               <h1 style={{ fontSize: 'clamp(1.9rem, 1.5rem + 1.6vw, 2.8rem)' }}>Dashboard</h1>
             </div>
-            <Badge tone="warning">Phase 1 preview</Badge>
+            <Badge tone="warning">Preview — no backend</Badge>
           </div>
           <p className="lead">
-            This is a visual preview of the management tools that CHIELSAM APP HUB will use to
-            publish and update apps. Nothing here is connected to a backend yet — the buttons and
-            forms are placeholders so you can see the intended workflow.
+            Everything on this page is driven by the same app data that powers the public website.
+            Publishing tools that need a server or a login are shown as clearly marked placeholders.
           </p>
         </div>
 
-        <div className="dash-banner" style={{ marginBottom: 'var(--space-8)' }}>
-          <div className="dash-banner__text">
-            <h2 style={{ fontSize: '1.5rem' }}>Owner sign-in comes later</h2>
-            <p className="muted">
-              No authentication, file uploads, Firebase, GitHub or APK hosting exist in this phase.
-              The hub runs entirely on local project data, which keeps it fast and free.
-            </p>
-          </div>
-          <div className="info-note" style={{ maxWidth: 320 }}>
-            <IconInfo size={18} />
-            <span>Read-only preview. Buttons below are intentionally disabled.</span>
-          </div>
-        </div>
+        <nav className="dash-nav" aria-label="Dashboard sections">
+          {SECTIONS.map((section) => (
+            <a className="dash-nav__link" href={`#${section.id}`} key={section.id}>
+              {section.label}
+            </a>
+          ))}
+        </nav>
 
-        <section className="stack" style={{ gap: 'var(--space-10)' }}>
+        <section className="stack" style={{ gap: 'var(--space-12)' }}>
           <div>
-            <h2 style={{ marginBottom: 'var(--space-5)', fontSize: '1.35rem' }}>Overview</h2>
+            <SectionHeading
+              id="overview"
+              title="Overview"
+              description="Totals across every app on the hub."
+            />
+
             <div className="dash-cards">
-              <div className="dash-stat">
-                <span className="dash-stat__icon">
-                  <IconStore size={20} />
-                </span>
-                <div>
-                  <div className="dash-stat__value">{stats.totalApps}</div>
-                  <div className="dash-stat__label">Total apps</div>
-                </div>
-              </div>
+              <Stat icon={IconStore} value={stats.totalApps} label="Total apps" />
+              <Stat icon={IconCheck} value={stats.available} label="Available now" tone="success" />
+              <Stat
+                icon={IconLayers}
+                value={stats.latestVersion ? `v${stats.latestVersion}` : '—'}
+                label={`Latest version${stats.latestReleaseApp ? ` · ${stats.latestReleaseApp}` : ''}`}
+              />
+              <Stat
+                icon={IconRefresh}
+                value={appsWithUpdates.length}
+                label="Apps with a pending update"
+                tone={appsWithUpdates.length > 0 ? 'warning' : 'brand'}
+              />
+            </div>
 
-              <div className="dash-stat">
-                <span className="dash-stat__icon">
-                  <IconCheck size={20} />
-                </span>
-                <div>
-                  <div className="dash-stat__value">{stats.available}</div>
-                  <div className="dash-stat__label">Available now</div>
-                </div>
-              </div>
-
-              <div className="dash-stat">
-                <span className="dash-stat__icon">
-                  <IconLayers size={20} />
-                </span>
-                <div>
-                  <div className="dash-stat__value">{stats.releases}</div>
-                  <div className="dash-stat__label">Releases tracked</div>
-                </div>
-              </div>
-
-              <div className="dash-stat">
-                <span className="dash-stat__icon">
-                  <IconRocket size={20} />
-                </span>
-                <div>
-                  <div className="dash-stat__value">Phase 2</div>
-                  <div className="dash-stat__label">Publishing tools</div>
-                </div>
-              </div>
+            <div className="info-note" style={{ marginTop: 'var(--space-5)' }}>
+              <IconInfo size={18} />
+              <span>
+                {stats.totalApps} apps · {stats.available} available · {stats.comingSoon} coming
+                soon · {stats.categories} categories · {stats.releases} real release
+                {stats.releases === 1 ? '' : 's'} recorded.
+              </span>
             </div>
           </div>
 
           <div>
-            <div className="section-head" style={{ marginBottom: 'var(--space-5)' }}>
-              <div className="section-head__text">
-                <h2 style={{ fontSize: '1.35rem' }}>Management modules</h2>
-                <p className="lead">
-                  The seven tools the owner area will provide once publishing is connected.
-                </p>
-              </div>
-            </div>
-
-            <div className="mod-grid">
-              {MODULES.map((module) => {
-                const ModuleIcon = module.icon
-
-                return (
-                  <article className="mod-card" key={module.title}>
-                    <div className="mod-card__head">
-                      <span className="mod-card__icon">
-                        <ModuleIcon size={20} />
-                      </span>
-                      <h3 className="mod-card__title">{module.title}</h3>
-                    </div>
-                    <p className="mod-card__desc">{module.description}</p>
-                    <div className="mod-card__foot">
-                      <span>Planned</span>
-                      <button type="button" className="btn btn--ghost btn--sm" disabled>
-                        {module.title}
-                        <IconArrowRight size={14} />
-                      </button>
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
-          </div>
-
-          <div>
-            <div className="section-head" style={{ marginBottom: 'var(--space-5)' }}>
-              <div className="section-head__text">
-                <h2 style={{ fontSize: '1.35rem' }}>Published apps</h2>
-                <p className="lead">Each app with its current release and live update state.</p>
-              </div>
-              <Link to="/apps" className="section-head__link">
-                View public page
-                <IconArrowRight size={16} />
-              </Link>
-            </div>
+            <SectionHeading
+              id="my-apps"
+              title="My Apps"
+              description="Every app in the catalogue, generated from the data source."
+              linkTo="/apps"
+              linkLabel="View public catalogue"
+            />
 
             <div className="stack" style={{ gap: 'var(--space-5)' }}>
               {apps.map((app) => (
-                <div className="card card--pad" key={app.slug}>
+                <div className="card card--pad" key={app.id}>
                   <div
                     style={{
                       display: 'flex',
@@ -238,42 +202,42 @@ export default function Dashboard() {
                       <div>
                         <strong style={{ fontSize: '1.05rem' }}>{app.name}</strong>
                         <div className="muted" style={{ fontSize: '0.86rem', fontWeight: 600 }}>
-                          {app.category} · {app.platform} · v{app.version} · updated {app.updatedAt}
+                          {app.category} · {app.platform} · {getDisplayVersion(app)}
+                          {isReleased(app) ? ` · updated ${app.updatedAt}` : ''}
                         </div>
                         <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          <Badge tone="success">{app.status}</Badge>
-                          <Badge>Live</Badge>
+                          <Badge tone={getStatusTone(app.status)}>{app.status}</Badge>
+                          <Badge>{app.releases.length} release{app.releases.length === 1 ? '' : 's'}</Badge>
+                          {app.featured ? <Badge tone="brand">Featured</Badge> : null}
                         </div>
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                      <button type="button" className="btn btn--secondary btn--sm" disabled>
-                        <IconNotes size={15} />
-                        Edit details
-                      </button>
+                      <Link to={`/apps/${app.slug}`} className="btn btn--secondary btn--sm">
+                        View page
+                      </Link>
                       <button type="button" className="btn btn--primary btn--sm" disabled>
                         <IconUpload size={15} />
                         Upload release
                       </button>
                     </div>
                   </div>
-
-                  <div style={{ marginTop: 'var(--space-5)' }}>
-                    <UpdateStatus app={app} />
-                  </div>
                 </div>
               ))}
+            </div>
+
+            <div style={{ marginTop: 'var(--space-8)' }}>
+              <AddAppPlaceholder />
             </div>
           </div>
 
           <div>
-            <div className="section-head" style={{ marginBottom: 'var(--space-5)' }}>
-              <div className="section-head__text">
-                <h2 style={{ fontSize: '1.35rem' }}>Release history</h2>
-                <p className="lead">Every published release with its notes and status.</p>
-              </div>
-            </div>
+            <SectionHeading
+              id="releases"
+              title="Releases"
+              description="Only real, published releases are listed here."
+            />
 
             <div className="timeline">
               {releases.map((release, index) => (
@@ -285,20 +249,18 @@ export default function Dashboard() {
 
                   <div className="timeline__card">
                     <div className="timeline__head">
-                      <strong>{release.appName}</strong>
+                      <Link to={`/apps/${release.appSlug}`} style={{ color: 'inherit' }}>
+                        <strong>{release.appName}</strong>
+                      </Link>
                       <span className="badge badge--brand">v{release.version}</span>
-                      <Badge tone="success" pulse>
-                        Published
-                      </Badge>
+                      <span className="badge">{release.type}</span>
                       <span className="timeline__date" style={{ marginLeft: 'auto' }}>
                         {release.date}
                       </span>
                     </div>
-                    <ul className="timeline__notes">
-                      {release.notes.map((note) => (
-                        <li key={note}>{note}</li>
-                      ))}
-                    </ul>
+
+                    <ReleaseNotes notes={release.notes} />
+
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                       <button type="button" className="btn btn--ghost btn--sm" disabled>
                         <IconNotes size={14} />
@@ -316,36 +278,71 @@ export default function Dashboard() {
           </div>
 
           <div>
-            <div className="section-head" style={{ marginBottom: 'var(--space-5)' }}>
-              <div className="section-head__text">
-                <h2 style={{ fontSize: '1.35rem' }}>Roadmap</h2>
-                <p className="lead">What is done, what is next and what is deliberately out of scope.</p>
-              </div>
-            </div>
+            <SectionHeading
+              id="updates"
+              title="Updates"
+              description="The live update state shown to visitors, and the publishing tools still to come."
+            />
 
-            <div className="phase-list">
-              {ROADMAP.map((item) => (
-                <div className="phase-item" key={item.phase}>
-                  <span className="phase-item__num">{item.phase}</span>
-                  <strong>{item.title}</strong>
-                  <ul className="timeline__notes">
-                    {item.items.map((entry) => (
-                      <li key={entry}>{entry}</li>
-                    ))}
-                  </ul>
-                  <span style={{ marginTop: 6 }}>
-                    <Badge tone={item.tone}>{item.phase.split(' · ')[0]}</Badge>
-                  </span>
+            <div className="stack" style={{ gap: 'var(--space-5)', marginBottom: 'var(--space-8)' }}>
+              {apps.map((app) => (
+                <div className="card card--pad" key={app.id}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      marginBottom: 'var(--space-4)',
+                    }}
+                  >
+                    <AppIcon app={app} size="sm" />
+                    <div>
+                      <strong>{app.name}</strong>
+                      <div className="muted" style={{ fontSize: '0.84rem', fontWeight: 600 }}>
+                        Channel: {app.update.channel} · Automatic updates{' '}
+                        {app.update.autoUpdate ? 'on' : 'off'}
+                      </div>
+                    </div>
+                  </div>
+                  <UpdateStatus app={app} />
                 </div>
               ))}
+            </div>
+
+            <h3 style={{ marginBottom: 'var(--space-4)' }}>Publishing modules</h3>
+            <div className="mod-grid">
+              {MODULES.map((module) => {
+                const ModuleIcon = module.icon
+
+                return (
+                  <article className="mod-card" key={module.title}>
+                    <div className="mod-card__head">
+                      <span className="mod-card__icon">
+                        <ModuleIcon size={20} />
+                      </span>
+                      <h3 className="mod-card__title">{module.title}</h3>
+                    </div>
+                    <p className="mod-card__desc">{module.description}</p>
+                    <div className="mod-card__foot">
+                      <span>{module.ready ? 'Working' : 'Planned'}</span>
+                      {module.ready ? (
+                        <span className="badge badge--success">Live</span>
+                      ) : (
+                        <span className="badge">Future</span>
+                      )}
+                    </div>
+                  </article>
+                )
+              })}
             </div>
           </div>
 
           <div className="info-note">
             <IconLock size={18} />
             <span>
-              Security note: this preview has no login, so nothing here is protected. Owner
-              authentication will be added before any real publishing tool is enabled.
+              This dashboard has no sign-in, so nothing here is protected. Owner authentication must
+              be added before any real publishing tool is enabled. Adding an app today means adding
+              an object to <code>src/data/apps.js</code> and pushing to GitHub.
             </span>
           </div>
         </section>

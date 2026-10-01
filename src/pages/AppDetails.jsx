@@ -1,28 +1,25 @@
 import { Link, useParams } from 'react-router-dom'
 import AppIcon from '../components/AppIcon'
+import AppCard from '../components/AppCard'
 import Badge from '../components/Badge'
+import DownloadButton from '../components/DownloadButton'
 import FeatureList from '../components/FeatureList'
 import ScreenshotPlaceholder from '../components/ScreenshotPlaceholder'
 import UpdateStatus from '../components/UpdateStatus'
-import { APP_STATUS, getAppBySlug, getAllApps } from '../data/apps'
+import VersionHistory, { ReleaseNotes } from '../components/VersionHistory'
+import useUpdateStatus from '../hooks/useUpdateStatus'
+import { getAppBySlug, getAllApps, getDisplayVersion, getStatusTone, isReleased } from '../data/apps'
 import {
   IconArrowRight,
   IconChevronRight,
-  IconDownload,
   IconImage,
   IconInfo,
-  IconNotes,
+  IconLayers,
   IconRefresh,
-  IconTag,
   IconSmartphone,
   IconSparkle,
+  IconTag,
 } from '../components/icons'
-
-function statusTone(status) {
-  if (status === APP_STATUS.AVAILABLE) return 'success'
-  if (status === APP_STATUS.IN_REVIEW) return 'warning'
-  return 'brand'
-}
 
 export default function AppDetails() {
   const { slug } = useParams()
@@ -47,7 +44,9 @@ export default function AppDetails() {
     )
   }
 
-  const others = getAllApps().filter((item) => item.slug !== app.slug)
+  const { data: update } = useUpdateStatus(app)
+  const released = isReleased(app)
+  const others = getAllApps().filter((item) => item.id !== app.id)
 
   return (
     <div className="page">
@@ -71,10 +70,11 @@ export default function AppDetails() {
                 </div>
               </div>
 
-              <div>
-                <Badge tone={statusTone(app.status)} pulse={app.status === APP_STATUS.AVAILABLE}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Badge tone={getStatusTone(app.status)} pulse={released}>
                   {app.status}
                 </Badge>
+                <span className="badge badge--brand">{getDisplayVersion(app)}</span>
               </div>
 
               <p className="muted" style={{ fontSize: '0.95rem' }}>
@@ -83,28 +83,27 @@ export default function AppDetails() {
 
               <div className="details__meta-grid">
                 <div>
-                  <span className="stat-chip__label">Version</span>
-                  <strong style={{ display: 'block' }}>{app.version}</strong>
+                  <span className="stat-chip__label">Category</span>
+                  <strong style={{ display: 'block' }}>{app.category}</strong>
                 </div>
                 <div>
                   <span className="stat-chip__label">Platform</span>
                   <strong style={{ display: 'block' }}>{app.platform}</strong>
                 </div>
                 <div>
-                  <span className="stat-chip__label">Category</span>
-                  <strong style={{ display: 'block' }}>{app.category}</strong>
+                  <span className="stat-chip__label">Version</span>
+                  <strong style={{ display: 'block' }}>{getDisplayVersion(app)}</strong>
                 </div>
                 <div>
                   <span className="stat-chip__label">Size</span>
-                  <strong style={{ display: 'block' }}>{app.size}</strong>
+                  <strong style={{ display: 'block' }}>
+                    {app.download.sizeMb ? `${app.download.sizeMb} MB` : 'Pending'}
+                  </strong>
                 </div>
               </div>
 
               <div className="details__actions">
-                <button type="button" className="btn btn--primary btn--block btn--lg" disabled>
-                  <IconDownload size={18} />
-                  Download (coming soon)
-                </button>
+                <DownloadButton app={app} update={update} />
                 <Link to="/apps" className="btn btn--ghost btn--block">
                   <IconArrowRight size={16} />
                   Browse other apps
@@ -112,12 +111,18 @@ export default function AppDetails() {
               </div>
             </div>
 
-            <div className="info-note">
-              <IconInfo size={18} />
-              <span>
-                The download button is a placeholder in Phase 1. No APK file is hosted yet — the
-                real download link will be added when hosting is connected.
-              </span>
+            <div className="card card--pad">
+              <span className="footer__title">Platform information</span>
+              <dl className="spec-table" style={{ marginTop: 14, gridTemplateColumns: '1fr' }}>
+                <dt>Platform</dt>
+                <dd>{app.platform}</dd>
+                <dt>Minimum version</dt>
+                <dd>{app.platformDetails.minimum}</dd>
+                <dt>Architectures</dt>
+                <dd>{app.platformDetails.architectures}</dd>
+                <dt>Requirements</dt>
+                <dd>{app.platformDetails.requirements}</dd>
+              </dl>
             </div>
           </aside>
 
@@ -129,19 +134,23 @@ export default function AppDetails() {
                   About this app
                 </h2>
                 <span className="muted" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-                  Updated {app.updatedAt}
+                  {released ? `Updated ${app.updatedAt}` : 'Not yet released'}
                 </span>
               </div>
               <p className="soft" style={{ lineHeight: 1.75 }}>
                 {app.description}
               </p>
-              <FeatureList
-                items={[
-                  `Currently version ${app.version} on ${app.platform}`,
-                  `Requires ${app.minRequirement}`,
-                  'Version history and release notes kept on this page',
-                ]}
-              />
+            </section>
+
+            <section className="panel">
+              <div className="panel__head">
+                <h2 className="panel__title">
+                  <IconSparkle size={19} />
+                  Features
+                </h2>
+                <span className="badge">{app.features.length}</span>
+              </div>
+              <FeatureList items={app.features} />
             </section>
 
             <section className="panel">
@@ -153,9 +162,21 @@ export default function AppDetails() {
                 <span className="badge">Placeholders</span>
               </div>
               <p className="muted" style={{ fontSize: '0.9rem' }}>
-                Real screenshots will replace these frames when the app is prepared for publishing.
+                Real screenshots will replace these frames when {app.name} is prepared for
+                publishing.
               </p>
               <ScreenshotPlaceholder screenshots={app.screenshots} />
+            </section>
+
+            <section className="panel">
+              <div className="panel__head">
+                <h2 className="panel__title">
+                  <IconLayers size={19} />
+                  Version history
+                </h2>
+                <span className="badge badge--brand">{getDisplayVersion(app)}</span>
+              </div>
+              <VersionHistory app={app} />
             </section>
 
             <section className="panel">
@@ -164,45 +185,27 @@ export default function AppDetails() {
                   <IconSparkle size={19} />
                   What's New
                 </h2>
-                <span className="badge badge--brand">v{app.version}</span>
+                <span className="badge badge--brand">{getDisplayVersion(app)}</span>
               </div>
-              <ul className="whatsnew__list">
-                {app.whatsNew.map((line) => (
-                  <li key={line}>
-                    <IconNotes size={17} style={{ color: 'var(--brand)', flexShrink: 0, marginTop: 3 }} />
-                    <span>{line}</span>
-                  </li>
-                ))}
-              </ul>
+              <ReleaseNotes notes={app.whatsNew} />
             </section>
 
             <section className="panel">
               <div className="panel__head">
                 <h2 className="panel__title">
                   <IconRefresh size={19} />
-                  Update information
+                  Update status
                 </h2>
-                <span className="badge badge--warning">Phase 1 placeholder</span>
+                <span className="badge badge--warning">No backend yet</span>
               </div>
 
               <UpdateStatus app={app} />
 
-              <dl className="spec-table">
-                <dt>Update channel</dt>
-                <dd>{app.updateInfo.channel}</dd>
-                <dt>Release channel</dt>
-                <dd>{app.updateInfo.releaseChannel}</dd>
-                <dt>Automatic updates</dt>
-                <dd>{app.updateInfo.autoUpdate}</dd>
-                <dt>Current version</dt>
-                <dd>v{app.version}</dd>
-                <dt>First released</dt>
-                <dd>{app.releasedAt}</dd>
-                <dt>Latest update</dt>
-                <dd>{app.updatedAt}</dd>
-                <dt>Support</dt>
-                <dd>{app.updateInfo.support}</dd>
-              </dl>
+              <p className="muted" style={{ fontSize: '0.88rem' }}>
+                Update results are read from the hub&apos;s local app data. A real update endpoint
+                will be connected in a later phase - the interface already reads from the update
+                service, so nothing here needs rewriting when that happens.
+              </p>
             </section>
 
             <section className="panel">
@@ -215,18 +218,34 @@ export default function AppDetails() {
               <dl className="spec-table">
                 <dt>App name</dt>
                 <dd>{app.name}</dd>
+                <dt>App ID</dt>
+                <dd>{app.id}</dd>
                 <dt>Publisher</dt>
                 <dd>{app.publisher}</dd>
                 <dt>Category</dt>
                 <dd>{app.category}</dd>
                 <dt>Platform</dt>
                 <dd>{app.platform}</dd>
-                <dt>Minimum requirement</dt>
-                <dd>{app.minRequirement}</dd>
-                <dt>Rating</dt>
-                <dd>{app.rating}</dd>
+                <dt>Current version</dt>
+                <dd>{getDisplayVersion(app)}</dd>
+                <dt>First released</dt>
+                <dd>{app.releasedAt || 'Not released'}</dd>
+                <dt>Update channel</dt>
+                <dd>{app.update.channel}</dd>
+                <dt>Automatic updates</dt>
+                <dd>{app.update.autoUpdate ? 'Enabled' : 'Not available'}</dd>
+                <dt>Support</dt>
+                <dd>{app.update.support}</dd>
               </dl>
             </section>
+
+            <div className="info-note">
+              <IconInfo size={18} />
+              <span>
+                No APK file is hosted for {app.name} yet. The download button stays disabled until a
+                real file is connected - it never points to a made-up link.
+              </span>
+            </div>
 
             {others.length > 0 ? (
               <section className="panel">
@@ -235,27 +254,13 @@ export default function AppDetails() {
                     <IconArrowRight size={19} />
                     More apps
                   </h2>
+                  <span className="muted" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                    {others.length} other app{others.length === 1 ? '' : 's'} on the hub
+                  </span>
                 </div>
                 <div className="app-grid">
                   {others.map((item) => (
-                    <div className="card card--pad" key={item.slug}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <AppIcon app={item} size="sm" />
-                        <div>
-                          <strong>{item.name}</strong>
-                          <div className="muted" style={{ fontSize: '0.84rem' }}>
-                            {item.category} · v{item.version}
-                          </div>
-                        </div>
-                      </div>
-                      <Link
-                        to={`/apps/${item.slug}`}
-                        className="btn btn--secondary btn--sm"
-                        style={{ marginTop: 14, width: 'fit-content' }}
-                      >
-                        View Details
-                      </Link>
-                    </div>
+                    <AppCard app={item} key={item.id} />
                   ))}
                 </div>
               </section>

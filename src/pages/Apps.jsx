@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import AppCard from '../components/AppCard'
 import { PlaceholderCard } from '../components/SectionHead'
-import { getAllApps, getCategories } from '../data/apps'
+import { APP_STATUS, getAllApps, getCategories } from '../data/apps'
 import { IconGrid, IconSearch } from '../components/icons'
+
+const STATUS_FILTERS = ['All', APP_STATUS.AVAILABLE, APP_STATUS.COMING_SOON, APP_STATUS.IN_REVIEW]
 
 export default function Apps() {
   const apps = getAllApps()
@@ -10,21 +12,23 @@ export default function Apps() {
 
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
+  const [status, setStatus] = useState('All')
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase()
 
     return apps.filter((app) => {
       const matchesCategory = category === 'All' || app.category === category
+      const matchesStatus = status === 'All' || app.status === status
       const matchesQuery =
         term === '' ||
         app.name.toLowerCase().includes(term) ||
         app.shortDescription.toLowerCase().includes(term) ||
         app.category.toLowerCase().includes(term)
 
-      return matchesCategory && matchesQuery
+      return matchesCategory && matchesStatus && matchesQuery
     })
-  }, [apps, category, query])
+  }, [apps, category, query, status])
 
   return (
     <div className="page">
@@ -40,8 +44,8 @@ export default function Apps() {
             </span>
           </div>
           <p className="lead">
-            Every app on the hub, with its current version, platform and status. Open an app to see
-            screenshots, release notes and its update state.
+            Every app on the hub, generated from one data source. Open an app to see its features,
+            version history, release notes and update state.
           </p>
         </div>
 
@@ -73,6 +77,20 @@ export default function Apps() {
               </button>
             ))}
           </div>
+
+          <div className="chip-group" role="group" aria-label="Filter by status">
+            {STATUS_FILTERS.map((item) => (
+              <button
+                key={item}
+                type="button"
+                className={`chip chip--status${status === item ? ' is-active' : ''}`}
+                onClick={() => setStatus(item)}
+                aria-pressed={status === item}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
         </div>
 
         <p className="result-count">
@@ -81,27 +99,21 @@ export default function Apps() {
 
         <div className="app-grid">
           {filtered.map((app) => (
-            <AppCard app={app} key={app.slug} />
+            <AppCard app={app} key={app.id} />
           ))}
 
           {filtered.length === 0 ? (
             <PlaceholderCard
               title="No apps match your search"
-              description="Try a different name or switch back to the All category."
+              description="Try a different name, or switch the category and status filters back to All."
             />
           ) : null}
         </div>
 
-        <div className="app-grid" style={{ marginTop: 'var(--space-6)' }}>
-          <PlaceholderCard
-            title="More apps coming soon"
-            description="Future releases will appear in this catalogue automatically."
-          />
-        </div>
-
         <div className="trust-strip" style={{ marginTop: 'var(--space-10)' }}>
           <span>
-            <IconGrid size={16} /> New apps are added to this page as they are published
+            <IconGrid size={16} /> New apps appear in this catalogue automatically as soon as they
+            are added to the data source
           </span>
         </div>
       </div>

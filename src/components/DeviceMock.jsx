@@ -7,13 +7,13 @@ export default function DeviceMock({ app }) {
           <span
             className="app-icon app-icon--sm"
             style={{
-              background: `linear-gradient(140deg, ${app.gradient[0]}, ${app.gradient[1]})`,
+              background: `linear-gradient(140deg, ${app.icon.gradient[0]}, ${app.icon.gradient[1]})`,
               width: 34,
               height: 34,
               fontSize: '0.85rem',
             }}
           >
-            {app.initials}
+            {app.icon.initials}
           </span>
           <span>
             <span className="device__store" style={{ display: 'block' }}>

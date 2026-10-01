@@ -11,19 +11,23 @@ exists. The first app published is **ORINZA** (Entertainment, version 1.0.0).
 Built with Vite + React + React Router. Plain JavaScript and plain CSS, with only three runtime
 dependencies, so it loads quickly and is easy to maintain.
 
-## Current status: Phase 1 complete
+## Current status: Phase 4 — multi-app platform
 
-Phase 1 (website foundation and responsive UI) is finished and working:
+The hub now runs on a full multi-app data model and is deployed automatically to GitHub Pages.
 
-- Home, Apps, App Details, Owner Dashboard (preview) and About pages
-- Responsive on desktop, tablet and Android phone
-- ORINZA published as the first sample app
+- Home, Apps, App Details, Owner Dashboard and About pages, all responsive
+- Any number of apps, all driven by one data source (`src/data/apps.js`)
+- Per-app features, screenshots, version history, release notes, download state and update state
+- ORINZA is the first published app (Entertainment, v1.0.0)
+- Automatic deployment: push to `main` and the site rebuilds in the cloud
 
-**Not part of Phase 1** (deliberately placeholders for now):
+**Still placeholders / not implemented** (deliberately):
 
-- No APK files are hosted — the download button is a disabled placeholder
-- No owner authentication — the dashboard is a read-only visual preview
+- No APK files are hosted — download buttons stay disabled
+- No owner authentication, so the dashboard is a read-only preview
+- The "Add App" form does not save anything; apps are added as data objects
 - No Firebase, no file uploads, no automatic in-app updates
+- Update results are read from local app data and are labelled as such
 
 ## 1. Run the website
 
@@ -59,49 +63,92 @@ ChielSamAppHub/
    │  └─ updateService.js  update checking (local now, API later)
    ├─ hooks/
    │  └─ useUpdateStatus.js  reads update state for one app
-   ├─ components/        reusable pieces (navbar, cards, icons…)
+   ├─ components/        reusable pieces (cards, download button,
+   │                     version history, add-app form, icons…)
    ├─ pages/             Home, Apps, AppDetails, Dashboard, About
    └─ styles/            design tokens + CSS for the whole site
 ```
 
 ## 4. Add a new app
 
-Open `src/data/apps.js` and add one more object to the `APPS` array, copying the ORINZA entry:
+Open `src/data/apps.js` and add one more object to the `APPS` array, copying the ORINZA entry.
+`id` and `slug` are the only two things that must be new.
 
 ```js
 {
-  slug: 'my-app',              // URL: /apps/my-app   (no spaces)
+  id: 'app_my_app',             // unique id
   name: 'MY APP',
-  initials: 'M',               // shown on the generated app icon
-  gradient: ['#7c3aed', '#2563eb'],  // icon colours
+  slug: 'my-app',              // URL: /apps/my-app   (no spaces)
+  tagline: 'A short tagline for the featured area.',
   category: 'Utilities',
-  status: APP_STATUS.AVAILABLE,
-  version: '1.0.0',
-  size: 'Pending',
-  platform: 'Android',
-  minRequirement: 'Android 8.0+',
+  status: APP_STATUS.AVAILABLE, // or COMING_SOON / IN_REVIEW
   publisher: 'ChielSam',
+
+  icon: {
+    type: 'generated',
+    initials: 'M',                    // shown on the generated app icon
+    gradient: ['#7c3aed', '#2563eb'], // icon colours
+    alt: 'MY APP app icon',
+  },
+
+  platform: 'Android',
+  platformDetails: {
+    minimum: 'Android 8.0+',
+    architectures: 'Universal',
+    requirements: 'Internet not required',
+  },
+
+  version: '1.0.0',              // null until the app is really released
   shortDescription: 'One or two sentences shown on app cards.',
   description: 'The full description shown on the app page.',
-  tagline: 'A short tagline for the featured area.',
-  featured: false,
-  updatedAt: '2026-10-01',
-  releasedAt: '2026-10-01',
-  downloads: '—',
-  rating: 'New',
+  features: ['A feature.', 'Another feature.'],
+
+  screenshots: [{ label: 'Home', glyph: 'home', image: null }],
   whatsNew: ['First release.', 'Another change.'],
-  updateInfo: {
+
+  download: {
+    state: DOWNLOAD_STATES.COMING_SOON, // or AVAILABLE
+    url: null,                          // only fill in a REAL file url
+    fileName: null,
+    sizeMb: null,
+    note: 'No APK is hosted yet.',
+  },
+
+  update: {
+    latestVersion: null,          // set only when a newer version exists
+    updateUrl: null,              // only a REAL file url
+    releaseNotes: [],
     channel: 'Stable',
     releaseChannel: 'Public',
-    autoUpdate: 'Not available in Phase 1',
+    autoUpdate: false,
     support: 'Updates are published manually by ChielSam.',
+    checkEndpoint: null,
   },
-  screenshots: [{ label: 'Home', glyph: 'home' }],
+
+  releases: [
+    {
+      version: '1.0.0',
+      date: '2026-10-01',
+      type: 'Initial release',
+      notes: ['First release.'],
+      isCurrent: true,
+    },
+  ],
+
+  featured: false,
+  releasedAt: '2026-10-01',
+  updatedAt: '2026-10-01',
+  downloads: '—',
+  rating: 'New',
 }
 ```
 
-The new app then appears automatically on Home, Apps, the search results, the dashboard and the
-release timeline. No other file needs editing.
+The new app then appears automatically on Home, the Apps catalogue, its own page at
+`/apps/my-app`, the search results, the dashboard app list, the release list and the update
+status panel. No other file needs editing.
+
+**Important:** only add a release to `releases` when it genuinely happened. Never list a
+placeholder version as real history — the site is a distribution point and must stay truthful.
 
 ## 5. Git workflow
 
@@ -139,15 +186,19 @@ To see the deployment history, open the repository's **Actions** tab.
 
 ## 7. Connecting a real backend later
 
-`src/services/updateService.js` already exposes one function:
+`src/services/updateService.js` already exposes these functions:
 
 ```js
 getUpdateStatus(appSlug, installedVersion) // -> Promise<UpdateResult>
+getAppUpdate(app, installedVersion)        // -> UpdateResult (no await needed)
 ```
 
-Every component reads only this payload, so to go live you set `UPDATE_BACKEND.mode = 'remote'`,
-fill in `UPDATE_BACKEND.endpoint`, and make that endpoint return the same shape. No page or
-component has to change.
+Every `UpdateResult` always contains `currentVersion`, `latestVersion`, `updateAvailable`,
+`releaseNotes` and `updateUrl`, plus a `source` / `isMock` flag so the interface can label local
+data honestly.
+
+To go live you set `UPDATE_BACKEND.mode = 'remote'`, fill in `UPDATE_BACKEND.endpoint`, and make
+that endpoint return the same fields. No page or component has to change.
 
 ## 8. What is NOT in Phase 1
 
