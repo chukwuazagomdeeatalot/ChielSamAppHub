@@ -53,7 +53,7 @@ function check(name, condition, detail = '') {
 const CASES = [
   { label: '/', route: '/', entry: '/', Page: Home, expect: ['CHIELSAM APP HUB', 'Discover My Apps', 'ORINZA', 'Latest updates'] },
   { label: '/apps', route: '/apps', entry: '/apps', Page: Apps, expect: ['All apps', 'ORINZA', 'View Details', 'published by ChielSam', 'Showing 1 of 1'] },
-  { label: '/apps/orinza', route: '/apps/:slug', entry: '/apps/orinza', Page: AppDetails, expect: ['ORINZA', 'Current release', 'v1.0.0', '2026-09-28', 'Version history', 'Build artifacts', 'Download coming soon', "What&#x27;s New", 'Future update flow', 'UPDATE AVAILABLE'] },
+  { label: '/apps/orinza', route: '/apps/:slug', entry: '/apps/orinza', Page: AppDetails, expect: ['ORINZA', 'Current release', 'v1.0.0', '2026-09-28', 'Version history', 'Build artifacts', 'Download v1.0.0', "What&#x27;s New", 'Future update flow', 'UPDATE AVAILABLE'] },
   { label: '/apps/missing', route: '/apps/:slug', entry: '/apps/missing', Page: AppDetails, expect: ['App not found'] },
   { label: '/dashboard', route: '/dashboard', entry: '/dashboard', Page: Dashboard, expect: ['Overview', 'My Apps', 'Releases', 'Updates', 'Current version:', 'Latest release', 'Release status', 'Create New Release', 'Current'] },
   { label: '/about', route: '/about', entry: '/about', Page: About, expect: ['About CHIELSAM APP HUB'] },
@@ -136,10 +136,10 @@ check('changes list present', releases[0].changes.length === 3)
 check('minimum supported version', releases[0].minimumSupportedVersion === 'Android 8.0')
 check('platform recorded', releases[0].platform === 'Android')
 check('artifact type modelled', releases[0].artifactType === ARTIFACT_TYPES.APK)
-check('no artifact url invented', releases[0].artifactUrl === null)
-check('no artifact name invented', releases[0].artifactName === null)
-check('no checksum invented', releases[0].checksum === null)
-check('no build id invented', releases[0].buildId === null)
+check('artifact url still null - distribution builds it', releases[0].artifactUrl === null)
+check('artifact name recorded', releases[0].artifactName === 'ORINZA-v1.0.0.apk')
+check('checksum recorded', releases[0].checksum === '1BEF8B796AA24809E948EA912963EB4746BCD99ABE1997E6EECF091B60C7A9D5')
+check('build id left null - no genuine build id', releases[0].buildId === null)
 check('status is current', releases[0].status === RELEASE_STATUS.CURRENT)
 check('data flagged as local/mock', releases[0].isMock === true)
 check('every record has the full shape', getAllReleaseRecords().every(
@@ -199,8 +199,8 @@ check('reason up-to-date', upToDate.reason === 'up-to-date')
 
 const behind = getUpdateAvailability(orinza.id, '0.9.0')
 check('visitor on 0.9.0 sees 1.0.0 as newer', behind.updateAvailable === true, JSON.stringify(behind))
-check('but update is not installable', behind.updateReady === false)
-check('and no update url exists', behind.updateUrl === null)
+check('update is installable with a real artifact', behind.updateReady === true)
+check('update url is the real GitHub asset', behind.updateUrl === 'https://github.com/chukwuazagomdeeatalot/ChielSamAppHub/releases/download/v1.0.0/ORINZA-v1.0.0.apk')
 
 const sameVersion = getUpdateAvailability(orinza.id, '1.0.0')
 check('visitor on 1.0.0 sees no update', sameVersion.updateAvailable === false)
@@ -246,21 +246,23 @@ console.log('DOWNLOAD BUTTON')
 const EXAMPLE_ASSET = 'https://example.com/releases/download/v1.0.0/ORINZA-v1.0.0.apk'
 
 const comingSoon = renderToString(<DownloadButton app={orinza} update={null} />)
-check('ORINZA shows Download coming soon', normalize(comingSoon).includes('Download coming soon'))
-check('ORINZA download button disabled', comingSoon.includes('disabled'))
-check('ORINZA has no href', !comingSoon.includes('href='))
+check('ORINZA shows Download v1.0.0', normalize(comingSoon).includes('Download v1.0.0'))
+check('ORINZA download button enabled', !comingSoon.includes('disabled'))
+check('ORINZA has real href', comingSoon.includes('href="https://github.com/chukwuazagomdeeatalot/ChielSamAppHub/releases/download/v1.0.0/ORINZA-v1.0.0.apk"'))
 
-// A url on the app object alone must NOT produce a link: the release record
-// still has no real artifact, so validation rejects it.
+// A url on the app object alone must NOT override the release record: the
+// distribution config is the authority, so an app-only url is ignored.
 const urlOnAppOnly = {
   ...orinza,
   download: { ...orinza.download, state: 'available', url: EXAMPLE_ASSET },
 }
 const urlOnAppOnlyHtml = renderToString(<DownloadButton app={urlOnAppOnly} update={null} />)
-check('app-only url does not create a link', !urlOnAppOnlyHtml.includes(EXAMPLE_ASSET))
-check('app-only url stays disabled', urlOnAppOnlyHtml.includes('disabled'))
+check('app-only url does not override distribution', !urlOnAppOnlyHtml.includes(EXAMPLE_ASSET))
+check('app-only url still uses real distribution link', urlOnAppOnlyHtml.includes('releases/download/v1.0.0/ORINZA-v1.0.0.apk'))
 
 // With a real artifact on the release record, the same button becomes a link.
+// The distribution config already supplies the real URL, so this test exercises
+// the same validation path with a literal artifactUrl override.
 const orinzaRelease = RELEASES.find((r) => r.appId === 'app_orinza')
 const savedArtifact = { ...orinzaRelease }
 orinzaRelease.artifactUrl = EXAMPLE_ASSET
@@ -275,8 +277,12 @@ check('real artifact not disabled', !availableHtml.includes('disabled'))
 check('link carries the apk file name', availableHtml.includes('download="ORINZA-v1.0.0.apk"'))
 check('download hint shows size', normalize(availableHtml).includes('12.5 MB'))
 
+// The distribution config still produces the canonical URL even when the
+// release record has no literal artifactUrl.
 Object.assign(orinzaRelease, savedArtifact)
-check('artifact restored after test', orinzaRelease.artifactUrl === null)
+const distHtml = renderToString(<DownloadButton app={orinza} update={null} />)
+check('distribution config produces canonical url', distHtml.includes('href="https://github.com/chukwuazagomdeeatalot/ChielSamAppHub/releases/download/v1.0.0/ORINZA-v1.0.0.apk"'))
+check('distribution config url is enabled', !distHtml.includes('disabled'))
 
 const updateReady = renderToString(
   <DownloadButton
@@ -313,13 +319,13 @@ console.log('RELEASE DISTRIBUTION')
 const currentRelease = getCurrentRelease(orinza.id)
 const availability = getArtifactAvailability(currentRelease)
 
-// ORINZA with no real APK url is NOT downloadable.
-check('no real apk url means not downloadable', availability.downloadable === false)
-check('isReleaseDownloadable agrees', isReleaseDownloadable(currentRelease) === false)
-check('meta reports not downloadable', meta.isDownloadable === false)
-check('meta download url is null', meta.downloadUrl === null)
-check('availability reports missing url', availability.issues.includes('missing-download-url'))
-check('availability reports missing file name', availability.issues.includes('missing-file-name'))
+// ORINZA now has a real distribution config, so it IS downloadable.
+check('ORINZA is downloadable', availability.downloadable === true)
+check('isReleaseDownloadable agrees', isReleaseDownloadable(currentRelease) === true)
+check('meta reports downloadable', meta.isDownloadable === true)
+check('meta download url is real', meta.downloadUrl === 'https://github.com/chukwuazagomdeeatalot/ChielSamAppHub/releases/download/v1.0.0/ORINZA-v1.0.0.apk')
+check('availability has no blocking issues', availability.issues.length === 0)
+check('availability reports real file name', availability.fileName === 'ORINZA-v1.0.0.apk')
 check('no issues on a null release', getArtifactAvailability(null).downloadable === false)
 
 // Release metadata is complete enough to describe a real build.
@@ -331,17 +337,19 @@ check('release has a minimum android version', currentRelease.minimumSupportedVe
 check('every release record has a version code', getAllReleaseRecords().every((r) => typeof r.versionCode === 'number'))
 check('meta exposes version code', meta.currentVersionCode === 1)
 
-// Expected asset naming convention, without claiming the file exists.
+// Expected asset naming convention matches the configured asset.
 check('expected apk name for ORINZA', getExpectedApkFileName('ORINZA', '1.0.0', ARTIFACT_TYPES.APK) === 'ORINZA-v1.0.0.apk')
 check('expected name on meta', meta.expectedFileName === 'ORINZA-v1.0.0.apk')
-check('expected name not treated as real file', meta.downloadFileName === null)
+check('download file name is the configured asset', meta.downloadFileName === 'ORINZA-v1.0.0.apk')
 check('aab convention uses .aab', getExpectedApkFileName('ORINZA', '2.0.0', ARTIFACT_TYPES.AAB) === 'ORINZA-v2.0.0.aab')
 check('expected name needs app and version', getExpectedApkFileName(null, '1.0.0', ARTIFACT_TYPES.APK) === null)
 
-// The distribution config is a real place to edit, and is empty today.
+// The distribution config is the single place that makes a download live.
 check('distribution provider is github releases', DISTRIBUTION.provider === 'github-releases')
 check('distribution names the repository', DISTRIBUTION.repository.name === 'ChielSamAppHub')
-check('no assets configured yet', hasConfiguredAssets() === false)
+check('ORINZA v1.0.0 asset is configured', hasConfiguredAssets() === true)
+check('ORINZA distribution tag is v1.0.0', getAssetLocation('app_orinza', '1.0.0')?.tag === 'v1.0.0')
+check('ORINZA distribution asset is ORINZA-v1.0.0.apk', getAssetLocation('app_orinza', '1.0.0')?.asset === 'ORINZA-v1.0.0.apk')
 check('null tag yields no url', buildReleaseAssetUrl({ tag: null, asset: 'ORINZA-v1.0.0.apk' }) === null)
 check('null asset yields no url', buildReleaseAssetUrl({ tag: 'v1.0.0', asset: null }) === null)
 check('empty strings yield no url', buildReleaseAssetUrl({ tag: '   ', asset: '  ' }) === null)
@@ -350,7 +358,7 @@ check('no url without arguments', buildReleaseAssetUrl() === null)
 const builtUrl = buildReleaseAssetUrl({ tag: 'v1.0.0', asset: 'ORINZA-v1.0.0.apk' })
 check('complete config builds a url', builtUrl === 'https://github.com/chukwuazagomdeeatalot/ChielSamAppHub/releases/download/v1.0.0/ORINZA-v1.0.0.apk')
 check('built url encodes spaces', buildReleaseAssetUrl({ tag: 'v1.0.0', asset: 'my file.apk' }).endsWith('/my%20file.apk'))
-check('getReleaseAssetUrl null when unconfigured', getReleaseAssetUrl('app_orinza', '1.0.0', null) === null)
+check('getReleaseAssetUrl resolves from distribution config', getReleaseAssetUrl('app_orinza', '1.0.0', null) === 'https://github.com/chukwuazagomdeeatalot/ChielSamAppHub/releases/download/v1.0.0/ORINZA-v1.0.0.apk')
 check('getReleaseAssetUrl prefers literal url', getReleaseAssetUrl('app_orinza', '1.0.0', EXAMPLE_ASSET) === EXAMPLE_ASSET)
 check('unknown app has no asset url', getReleaseAssetUrl('app_nope', '1.0.0', null) === null)
 
@@ -385,6 +393,8 @@ check('size label formats gb', formatFileSize(2048) === '2.00 GB')
 check('missing size label is null', formatFileSize(null) === null)
 
 // A published newer release is downloadable and drives the update path.
+// This test uses a literal artifactUrl override so it does not depend on the
+// distribution config, which is pinned to v1.0.0.
 const newerRelease = {
   ...orinzaRelease,
   version: '1.1.0',
@@ -424,7 +434,7 @@ orinzaRelease.artifactName = null
 orinzaRelease.artifactSizeMb = null
 
 const restored = getArtifactAvailability(getCurrentRelease(orinza.id))
-check('state restored after multi-release test', restored.downloadable === false)
+check('state restored after multi-release test', restored.downloadable === true)
 check('single release again', getReleasesForApp(orinza.id).length === 1)
 
 /* ---------------- no fabricated data ---------------- */
@@ -445,10 +455,10 @@ const allHtml = [
   ),
 ].join(' ')
 
-check('no fake apk link in html', !/\.apk["']/i.test(allHtml.replace(/https:\/\/example\.com[^"' ]*/g, '')))
-check('no invented http download urls', !/href="https?:\/\/(?!example\.com)[^"]*(\.apk|\.aab|download)/i.test(allHtml))
-check('all release artifact urls are null', getAllReleaseRecords().every((r) => r.artifactUrl === null))
-check('all app download urls are null', getAllApps().every((a) => a.download.url === null))
+check('no fake apk link in html', !/\.apk["']/i.test(allHtml.replace(/https:\/\/example\.com[^"' ]*/g, '').replace(/https:\/\/github\.com\/chukwuazagomdeeatalot\/ChielSamAppHub\/releases\/download\/v1\.0\.0\/ORINZA-v1\.0\.0\.apk/g, '')))
+check('no invented http download urls', !/href="https?:\/\/(?!example\.com|github\.com\/chukwuazagomdeeatalot\/ChielSamAppHub\/releases\/download\/v1\.0\.0\/ORINZA-v1\.0\.0\.apk)[^"]*(\.apk|\.aab|download)/i.test(allHtml))
+check('release artifact urls stay null - distribution builds the url', getAllReleaseRecords().every((r) => r.artifactUrl === null))
+check('app download urls stay null - distribution builds the url', getAllApps().every((a) => a.download.url === null))
 check('ORINZA status available', orinza.status === 'Available')
 
 console.log('')

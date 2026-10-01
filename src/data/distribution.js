@@ -41,8 +41,8 @@ export const DISTRIBUTION = {
   assets: {
     app_orinza: {
       '1.0.0': {
-        tag: null,
-        asset: null,
+        tag: 'v1.0.0',
+        asset: 'ORINZA-v1.0.0.apk',
       },
     },
   },

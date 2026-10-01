@@ -83,11 +83,11 @@ export const APPS = [
     ],
 
     download: {
-      state: DOWNLOAD_STATES.COMING_SOON,
+      state: DOWNLOAD_STATES.AVAILABLE,
       url: null,
-      fileName: null,
-      sizeMb: null,
-      note: 'No APK is hosted yet. The download link appears here once a signed APK is published as a GitHub Release.',
+      fileName: 'ORINZA-v1.0.0.apk',
+      sizeMb: 49.1,
+      note: 'ORINZA v1.0.0 is delivered from the GitHub Release tagged v1.0.0.',
     },
 
     update: {
