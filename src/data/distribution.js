@@ -1,3 +1,4 @@
+
 /**
  * Binary distribution settings for the hub.
  *
@@ -32,17 +33,19 @@ export const DISTRIBUTION = {
   /**
    * Release assets, keyed by app id and then by version.
    *
-   *   tag    the GitHub Release tag, e.g. 'v1.0.0'
-   *   asset  the name of the uploaded file, e.g. 'ORINZA-v1.0.0.apk'
-   *
-   * Both are null right now because no GitHub Release has been published yet.
-   * A null value means "no file hosted", never "link coming soon".
+   * tag    the GitHub Release tag.
+   * asset  the exact name of the uploaded release file.
    */
   assets: {
     app_orinza: {
       '1.0.0': {
         tag: 'v1.0.0',
         asset: 'ORINZA-v1.0.0.apk',
+      },
+
+      '1.1.0': {
+        tag: 'v1.1.0',
+        asset: 'app-release.apk',
       },
     },
   },
@@ -95,6 +98,8 @@ export function getReleaseAssetUrl(appId, version, artifactUrl) {
 /** True once at least one real asset location has been configured. */
 export function hasConfiguredAssets() {
   return Object.values(DISTRIBUTION.assets || {}).some((versions) =>
-    Object.values(versions || {}).some((location) => isFilled(location?.tag) && isFilled(location?.asset)),
+    Object.values(versions || {}).some(
+      (location) => isFilled(location?.tag) && isFilled(location?.asset),
+    ),
   )
 }
