@@ -1,25 +1,9 @@
+```js
 /**
  * Every published release of every app, stored as one flat list.
  *
- * This file holds DATA ONLY. All release logic (version comparison, current vs
- * latest, status labels) lives in `src/services/releaseService.js`.
- *
- * Rules for this file:
- *  1. Only add a release that genuinely happened. Never invent history.
- *  2. `artifactUrl` and `checksum` must stay null until a real file exists.
- *     A null url means "no file hosted", not "link coming soon" - the UI shows
- *     the difference and never fabricates a link.
- *  3. Exactly one release per app may have status CURRENT. That is the version
- *     the hub presents as the app's current version.
- *  4. `versionCode` is the Android version code, which must increase for every
- *     upload the Play Store / Android installer will accept as an update.
- *
- * A release can hold several real versions (v1.0.0, v1.1.0, v2.0.0, ...). Each
- * one is an independent record; the newest published record is the current
- * release and every older record stays visible in the app's release history.
- *
- * Where the APK binary actually lives is configured separately, in
- * `src/data/distribution.js`.
+ * This file holds DATA ONLY. All release logic lives in
+ * src/services/releaseService.js.
  */
 
 export const RELEASE_STATUS = {
@@ -29,11 +13,6 @@ export const RELEASE_STATUS = {
   DRAFT: 'draft',
 }
 
-/**
- * Build artifact formats the hub is designed to carry. Declaring the format
- * list up front means a real APK, AAB, desktop or iOS build can be attached
- * later without changing the data model.
- */
 export const ARTIFACT_TYPES = {
   APK: 'apk',
   AAB: 'aab',
@@ -71,7 +50,7 @@ export const RELEASES = [
     ],
     minimumSupportedVersion: 'Android 8.0',
     platform: 'Android',
-    status: RELEASE_STATUS.CURRENT,
+    status: RELEASE_STATUS.SUPERSEDED,
     channel: RELEASE_CHANNELS.STABLE,
     artifactName: 'ORINZA-v1.0.0.apk',
     artifactUrl: null,
@@ -81,8 +60,31 @@ export const RELEASES = [
     buildId: null,
     updateUrl: null,
   },
+  {
+    appId: 'app_orinza',
+    version: '1.1.0',
+    versionCode: 2,
+    releaseDate: '2026-11-04',
+    releaseNotes: 'ORINZA version 1.1.0 release.',
+    changes: [
+      'ORINZA version 1.1.0.',
+      'Updated application release.',
+    ],
+    minimumSupportedVersion: 'Android 8.0',
+    platform: 'Android',
+    status: RELEASE_STATUS.CURRENT,
+    channel: RELEASE_CHANNELS.STABLE,
+    artifactName: 'app-release.apk',
+    artifactUrl: null,
+    artifactType: ARTIFACT_TYPES.APK,
+    artifactSizeMb: null,
+    checksum: null,
+    buildId: null,
+    updateUrl: null,
+  },
 ]
 
 export function getAllReleaseRecords() {
   return RELEASES
 }
+```
